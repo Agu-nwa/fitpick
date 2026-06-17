@@ -14,7 +14,7 @@ export function apiSuccess<T>(data: T, init?: { message?: string; status?: numbe
 export function apiError(
   code: ApiErrorCode,
   message: string,
-  init?: { status?: number; details?: unknown[] }
+  init?: { status?: number; details?: unknown }
 ) {
   const body: ApiFailure = {
     ok: false,
@@ -43,6 +43,8 @@ export function statusForCode(code: ApiErrorCode) {
       return 409;
     case "RATE_LIMITED":
       return 429;
+    case "PLUS_REQUIRED":
+      return 402;
     case "SETUP_REQUIRED":
       return 503;
     default:

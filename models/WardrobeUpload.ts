@@ -4,6 +4,12 @@ const WardrobeUploadSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     storageKey: { type: String, required: true },
+    filename: { type: String, default: "" },
+    mimeType: { type: String, default: "" },
+    sizeBytes: { type: Number, default: 0 },
+    width: { type: Number, default: 0 },
+    height: { type: Number, default: 0 },
+    provider: { type: String, default: "metadata" },
     imageUrl: { type: String, default: "" },
     thumbnailUrl: { type: String, default: "" },
     uploadStatus: { type: String, enum: ["pending", "uploaded", "failed"], default: "pending" },

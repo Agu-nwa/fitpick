@@ -4,7 +4,7 @@ const OutfitFeedbackSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     outfitId: { type: Schema.Types.ObjectId, ref: "OutfitRecommendation", required: true, index: true },
-    rating: { type: String, enum: ["Perfect", "Good", "Okay", "Not today", "Not my style"], required: true },
+    rating: { type: Number, min: 1, max: 5, required: true },
     feedbackTags: { type: [String], default: [] },
     note: { type: String, default: "", maxlength: 500 }
   },

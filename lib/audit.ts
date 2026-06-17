@@ -9,8 +9,25 @@ export type AuditAction =
   | "preferences.update"
   | "admin.seed"
   | "wardrobe.upload"
+  | "wardrobe.create"
+  | "wardrobe.update"
+  | "wardrobe.tags.review"
+  | "wardrobe.upload.review"
+  | "wardrobe.archive"
   | "wardrobe.delete"
-  | "billing.change";
+  | "outfit.recommend"
+  | "outfit.swap"
+  | "outfit.save"
+  | "outfit.wear"
+  | "outfit.feedback"
+  | "billing.change"
+  | "billing.checkout"
+  | "entitlement.change"
+  | "notifications.update"
+  | "privacy.update"
+  | "account.delete_request"
+  | "storage.signed_upload"
+  | "storage.signed_view";
 
 export function requestMeta(request: NextRequest) {
   return {

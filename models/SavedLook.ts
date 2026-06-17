@@ -13,6 +13,10 @@ const SavedLookSchema = new Schema(
   { timestamps: true }
 );
 
+SavedLookSchema.index({ userId: 1, outfitId: 1 }, { unique: true });
+SavedLookSchema.index({ userId: 1, favorite: 1 });
+SavedLookSchema.index({ userId: 1, savedAt: -1 });
+
 export type SavedLookDocument = InferSchemaType<typeof SavedLookSchema> & {
   _id: mongoose.Types.ObjectId;
 };

@@ -14,6 +14,12 @@ export type OutfitRecommendation = {
   colorNote: string;
   repeatNote: string;
   careNote: string;
+  createdAt?: string;
+  swapGroups?: Array<{
+    category: string;
+    itemIds: string[];
+    warningChips: string[];
+  }>;
 };
 
 export type WornLook = OutfitRecommendation & {

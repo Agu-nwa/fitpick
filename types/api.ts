@@ -6,6 +6,7 @@ export type ApiErrorCode =
   | "CONFLICT"
   | "VALIDATION_ERROR"
   | "RATE_LIMITED"
+  | "PLUS_REQUIRED"
   | "SETUP_REQUIRED"
   | "INTERNAL_ERROR";
 
@@ -20,7 +21,7 @@ export type ApiFailure = {
   error: {
     code: ApiErrorCode;
     message: string;
-    details?: unknown[];
+    details?: unknown;
   };
 };
 

@@ -7,7 +7,13 @@ const NotificationPreferenceSchema = new Schema(
     weatherAlerts: { type: Boolean, default: true },
     eventPrep: { type: Boolean, default: true },
     repeatWarnings: { type: Boolean, default: true },
-    pushToken: { type: String, default: "" }
+    pushToken: { type: String, default: "" },
+    quietHours: {
+      enabled: { type: Boolean, default: false },
+      start: { type: String, default: "" },
+      end: { type: String, default: "" }
+    },
+    timezone: { type: String, default: "" }
   },
   { timestamps: true }
 );

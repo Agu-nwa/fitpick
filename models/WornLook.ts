@@ -12,6 +12,9 @@ const WornLookSchema = new Schema(
   { timestamps: true }
 );
 
+WornLookSchema.index({ userId: 1, wornAt: -1 });
+WornLookSchema.index({ userId: 1, occasion: 1 });
+
 export type WornLookDocument = InferSchemaType<typeof WornLookSchema> & {
   _id: mongoose.Types.ObjectId;
 };

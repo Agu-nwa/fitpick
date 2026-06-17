@@ -18,6 +18,8 @@ export async function PATCH(request: NextRequest) {
 
     if (parsed.data.name !== undefined) auth.user.name = parsed.data.name;
     if (parsed.data.avatarUrl !== undefined) auth.user.avatarUrl = parsed.data.avatarUrl;
+    if (parsed.data.timezone !== undefined) auth.user.timezone = parsed.data.timezone;
+    if (parsed.data.locale !== undefined) auth.user.locale = parsed.data.locale;
 
     await auth.user.save();
     await recordAuditEvent({

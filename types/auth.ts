@@ -9,6 +9,8 @@ export type SafeUser = {
   name: string;
   email: string;
   avatarUrl?: string;
+  timezone?: string;
+  locale?: string;
   role: "user" | "admin";
   plan: "free" | "plus";
   createdAt?: string;
