@@ -4,6 +4,5 @@ node_modules
 .env.local
 .DS_Store
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 .vercel
+.pm2
