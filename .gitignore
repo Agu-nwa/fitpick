@@ -6,3 +6,6 @@ node_modules
 npm-debug.log*
 .vercel
 .pm2
+.env.local
+.env.local.save
+.env

@@ -3,6 +3,7 @@ import { suggestWithCloudinaryProvider } from "@/lib/ai/providers/cloudinary-tag
 import { suggestWithGeminiProvider } from "@/lib/ai/providers/gemini-tagging";
 import { suggestWithMockProvider } from "@/lib/ai/providers/mock-tagging";
 import type { AiSuggestedWardrobeTags, AiTaggingInput, AiTaggingProvider, AiTaggingResult } from "@/types/ai-tagging";
+import { suggestWithOpenAiProvider } from "@/lib/ai/providers/openai-tagging";
 
 const safeFailedResult: AiTaggingResult = {
   ok: false,
@@ -51,12 +52,7 @@ export async function suggestWardrobeTags(input: AiTaggingInput): Promise<AiTagg
         : provider === "gemini"
           ? await suggestWithGeminiProvider(input)
           : provider === "openai"
-            ? {
-                ok: false,
-                provider,
-                aiTagStatus: "failed",
-                safeMessage: process.env.OPENAI_API_KEY ? "AI tag suggestions are not available yet." : "AI tag suggestions are not configured yet."
-              } satisfies AiTaggingResult
+            ? await suggestWithOpenAiProvider(input)
             : await suggestWithMockProvider(input);
 
     return validateSuggestedTags(normalizeSuggestedTags(result));
