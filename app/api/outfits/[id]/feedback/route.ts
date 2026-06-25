@@ -72,7 +72,7 @@ export async function POST(
           liked: parsed.data.liked,
           reason: parsed.data.reason,
           outfitItems: items,
-          preferences
+          preferences: preferences?.toObject?.() ?? JSON.parse(JSON.stringify(preferences))
         });
 
       // preferences' exact fields may differ from the learning result shape.
