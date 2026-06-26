@@ -9,26 +9,41 @@ import { rateLimitPlaceholder } from "@/lib/rate-limit";
 import { isObjectId } from "@/lib/wardrobe";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 
-type RouteContext = {
-  params: {
-    id: string;
-  };
-};
-
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function POST(request: NextRequest, context: { params: { id: string } }) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `wardrobe-suggest-tags:${meta.ip}`, limit: 20, windowMs: 60 * 1000 });
+
+  const limited = rateLimitPlaceholder({
+    key: `wardrobe-suggest-tags:${meta.ip}`,
+    limit: 20,
+    windowMs: 60 * 1000
+  });
+
   if (limited) return limited;
 
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
-    if (!isObjectId(context.params.id)) return apiError("NOT_FOUND", "Wardrobe upload was not found.");
 
-    const upload = await WardrobeUpload.findOne({ _id: context.params.id, userId: auth.user._id });
-    if (!upload) return apiError("NOT_FOUND", "Wardrobe upload was not found.");
-    if (!upload.storageKey && !upload.imageUrl) {
-      return apiError("BAD_REQUEST", "Upload image details are not available for tag suggestions.");
+    const id = context.params.id;
+
+    if (!isObjectId(id)) {
+      return apiError("NOT_FOUND", "Invalid wardrobe upload ID.");
+    }
+
+    const upload = await WardrobeUpload.findOne({
+      _id: id,
+      userId: auth.user._id
+    });
+
+    if (!upload) {
+      return apiError("NOT_FOUND", "Wardrobe upload was not found.");
+    }
+
+    if (!upload.imageUrl && !upload.storageKey) {
+      return apiError(
+        "BAD_REQUEST",
+        "Upload image is missing. Please re-upload."
+      );
     }
 
     upload.aiTagStatus = "queued";
@@ -46,10 +61,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
 
     upload.aiProvider = result.provider;
-    upload.aiConfidence = result.confidence || result.suggestedTags?.confidence || 0;
-    upload.aiTagStatus = result.ok && result.suggestedTags ? result.aiTagStatus : "failed";
+    upload.aiConfidence = result.confidence ?? 0;
+    upload.aiTagStatus = result.ok ? result.aiTagStatus : "failed";
     upload.suggestedTags = result.suggestedTags || {};
-    upload.aiErrorSafeMessage = result.ok ? "" : result.safeMessage || "We could not suggest tags for this item. You can add them manually.";
+    upload.aiErrorSafeMessage = result.ok
+      ? ""
+      : result.safeMessage || "We could not analyze this image.";
+
     await upload.save();
 
     await recordAuditEvent({
@@ -78,8 +96,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       suggestedTags: result.suggestedTags,
       safeMessage: result.safeMessage
     });
+
   } catch (error) {
-    console.error("FitPick upload tag suggestion error:", error);
-    return apiError("INTERNAL_ERROR", "We could not suggest tags for this item. You can add them manually.");
+    console.error("Tagging error:", error);
+
+    return apiError(
+      "INTERNAL_ERROR",
+      "We could not suggest tags for this item."
+    );
   }
 }

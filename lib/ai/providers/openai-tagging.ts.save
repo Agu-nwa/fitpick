@@ -74,18 +74,6 @@ Return ONLY JSON for clothing analysis:
       }
     };
 
-  } catch (error: any) {
-    console.error("OpenAI tagging error:", error);
-
-    // 🔥 CRITICAL FIX: NEVER FAIL APP ON QUOTA
-    const msg =
-      error?.status === 429 || error?.code === "insufficient_quota"
-        ? "AI quota exhausted. Using fallback tagging."
-        : "We could not analyze this image.";
-
-    return fallback(msg);
-  }
-}
 
 function fallback(message: string): AiTaggingResult {
   return {
