@@ -9,6 +9,8 @@ export type WardrobeCategory =
   | "bags"
   | "accessories";
 
+import type { WardrobeImageAsset } from "@/types/ai-tagging";
+
 export type WardrobeItem = {
   id: string;
   name: string;
@@ -28,10 +30,15 @@ export type WardrobeItem = {
   archivedAt?: string | null;
   imageUrl?: string;
   thumbnailUrl?: string;
-  images?: Record<string, unknown>;
+  images?: Partial<Record<"front" | "back" | "fabricCloseUp" | "label", WardrobeImageAsset>> & {
+    additional?: WardrobeImageAsset[];
+  };
   aiAnalysis?: unknown;
   hasImage?: boolean;
   imageTone?: string;
+  studioImageUrl?: string;
+  recognizedEntity?: string;
+  imageProcessingStatus?: "not_started" | "processing" | "ready" | "failed" | "unavailable" | string;
 };
 
 export type WardrobeSummary = {

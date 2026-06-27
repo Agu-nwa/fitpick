@@ -25,6 +25,17 @@ function uniqueOwnedIds(ids: string[] = [], ownedItemIds: string[]) {
   return Array.from(new Set(ids.map(String).filter((id) => owned.has(id))));
 }
 
+function defaultAvatarPreview() {
+  return {
+    status: "not_started" as const,
+    jobId: null,
+    previewId: null,
+    imageUrl: null,
+    cacheKey: null,
+    errorMessage: null
+  };
+}
+
 function fallbackStylistResponse(input: {
   message: string;
   intent: StylistIntent;
@@ -53,7 +64,11 @@ function fallbackStylistResponse(input: {
     stylingTips: input.deterministicRecommendation?.stylingTips || [],
     followUpQuestions: input.intent === "unclear" ? ["What occasion are you dressing for?"] : [],
     addLaterSuggestions: input.allowShoppingAdvice && input.deterministicRecommendation?.addLater ? [input.deterministicRecommendation.addLater] : [],
-    safetyWarnings: input.safetyWarnings || []
+    safetyWarnings: input.safetyWarnings || [],
+    visualMode: "none",
+    outfitRecommendationId: null,
+    avatarPreview: defaultAvatarPreview(),
+    visualizationDisclaimer: "AI visualization, not exact virtual try-on."
   };
 }
 
@@ -68,7 +83,11 @@ function groundStylistResponse(response: StylistResponse, ownedItemIds: string[]
     recommendedItemIds: uniqueOwnedIds(response.recommendedItemIds, ownedItemIds),
     alternativeItemIds: uniqueOwnedIds(response.alternativeItemIds, ownedItemIds),
     addLaterSuggestions: allowShoppingAdvice ? response.addLaterSuggestions : [],
-    safetyWarnings
+    safetyWarnings,
+    visualMode: "none" as const,
+    outfitRecommendationId: null,
+    avatarPreview: defaultAvatarPreview(),
+    visualizationDisclaimer: "AI visualization, not exact virtual try-on."
   };
 }
 

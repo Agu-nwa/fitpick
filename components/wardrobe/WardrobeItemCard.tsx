@@ -7,7 +7,8 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
   const status = item.condition === "needs-care" ? "Needs care" : item.condition === "missing-tags" ? "Missing tags" : "Ready";
   const tone = item.condition === "ready" ? "success" : item.condition === "needs-care" ? "warning" : "premium";
   const imageTone = item.imageTone || "from-stone-100 to-stone-300";
-  const imageUrl = item.thumbnailUrl || item.imageUrl;
+  const imageUrl = item.studioImageUrl || item.thumbnailUrl || item.imageUrl;
+  const processingStatus = item.imageProcessingStatus || "not_started";
 
   return (
     <article className="h-full rounded-xl3 border border-line bg-surface p-3 shadow-card transition hover:-translate-y-0.5 hover:shadow-soft">
@@ -26,7 +27,10 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
         <Badge tone={tone}>{status}</Badge>
+        {item.recognizedEntity ? <Badge tone="premium">{item.recognizedEntity}</Badge> : null}
         {item.category ? <Badge>{item.category}</Badge> : null}
+        {processingStatus === "processing" ? <Badge tone="info">Creating studio image</Badge> : null}
+        {processingStatus === "unavailable" ? <Badge tone="warning">Studio image unavailable</Badge> : null}
       </div>
     </article>
   );

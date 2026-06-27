@@ -48,10 +48,31 @@ export type AiTaggingResult = {
 
 export type WardrobeImagePurpose = "front" | "back" | "fabricCloseUp" | "label" | "additional";
 
+export type WardrobeImageVariantStatus = "not_started" | "processing" | "ready" | "failed" | "unavailable";
+
+export type WardrobeImageVariant = {
+  url?: string;
+  storageKey?: string;
+  provider?: string;
+  width?: number;
+  height?: number;
+  bytes?: number;
+  status?: WardrobeImageVariantStatus;
+  backgroundPreset?: string;
+  processedAt?: string;
+  errorMessage?: string;
+};
+
 export type WardrobeImageAsset = {
   url: string;
   storageKey: string;
   provider: string;
   uploadedAt?: string;
   purpose: WardrobeImagePurpose;
+  variants?: {
+    original?: WardrobeImageVariant;
+    cutout?: WardrobeImageVariant;
+    studio?: WardrobeImageVariant;
+    thumbnail?: WardrobeImageVariant;
+  };
 };

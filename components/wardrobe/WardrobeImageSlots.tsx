@@ -23,6 +23,12 @@ export function WardrobeImageSlots({
     <div className="grid grid-cols-2 gap-3">
       {slotLabels.map((slot) => {
         const image = images[slot.key];
+        const studioStatus = image?.variants?.studio?.status;
+        const displayUrl = image?.variants?.studio?.status === "ready" && image.variants.studio.url
+          ? image.variants.studio.url
+          : image?.variants?.cutout?.status === "ready" && image.variants.cutout.url
+            ? image.variants.cutout.url
+            : image?.url;
         return (
           <button
             key={slot.key}
@@ -36,7 +42,7 @@ export function WardrobeImageSlots({
             aria-label={`${slot.label} photo slot`}
           >
             <ImageFrame
-              src={image?.url}
+              src={displayUrl}
               alt={`${slot.label} photo`}
               placeholder={
                 <span>
@@ -47,6 +53,8 @@ export function WardrobeImageSlots({
               overlay={
                 <div className="flex items-center justify-between gap-2">
                   <Badge tone={image?.url ? "success" : "neutral"}>{image?.url ? "Added" : "Needed"}</Badge>
+                  {studioStatus === "processing" ? <Badge tone="info">Studio</Badge> : null}
+                  {studioStatus === "unavailable" ? <Badge tone="warning">Original</Badge> : null}
                   <span className="truncate rounded-full bg-white/90 px-2 py-1 text-[11px] font-semibold text-ink shadow-card">
                     {slot.label}
                   </span>

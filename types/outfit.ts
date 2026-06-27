@@ -22,6 +22,7 @@ export type OutfitRecommendation = {
   stylingTips?: string[];
   repeatNote: string;
   careNote: string;
+  source?: "rule_based" | "manual" | "ai_placeholder" | "ai" | "outfit_page" | "stylist_chat" | "system" | string;
   createdAt?: string;
   preview?: {
     status: "not_started" | "generating" | "ready" | "failed" | string;
@@ -59,6 +60,17 @@ export type StylistIntent =
   | "shopping_advice_requested"
   | "unclear";
 
+export type StylistVisualMode = "none" | "premium_preview" | "digital_human";
+
+export type StylistAvatarPreview = {
+  status: "not_started" | "queued" | "generating" | "ready" | "failed" | string;
+  jobId: string | null;
+  previewId: string | null;
+  imageUrl: string | null;
+  cacheKey: string | null;
+  errorMessage: string | null;
+};
+
 export type StylistResponse = {
   message: string;
   intent: StylistIntent;
@@ -72,4 +84,8 @@ export type StylistResponse = {
   followUpQuestions: string[];
   addLaterSuggestions: string[];
   safetyWarnings: string[];
+  visualMode?: StylistVisualMode;
+  outfitRecommendationId?: string | null;
+  avatarPreview?: StylistAvatarPreview;
+  visualizationDisclaimer?: string;
 };

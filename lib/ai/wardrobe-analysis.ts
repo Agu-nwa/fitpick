@@ -7,6 +7,7 @@ import { buildWardrobeAnalysisPrompt } from "@/lib/ai/prompts";
 import { safeAIError } from "@/lib/ai/safety/ai-safety";
 import { wardrobeAiAnalysisSchema, type WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import { safeParseJson, validateJsonResponse } from "@/lib/ai/validation/response-validator";
+import { resolveGarmentEntity, serializeEntityRecognition } from "@/lib/garment-intelligence/entity-resolver";
 import type { AiSuggestedWardrobeTags, AiTaggingInput, AiTaggingResult } from "@/types/ai-tagging";
 
 function averageConfidence(analysis: WardrobeAiAnalysis) {
@@ -78,14 +79,50 @@ function mergeLabelExtraction(analysis: WardrobeAiAnalysis, extraction?: Dedicat
   };
 }
 
+function mergeEntityRecognition(analysis: WardrobeAiAnalysis, extraction?: DedicatedLabelExtraction) {
+  try {
+    const resolved = serializeEntityRecognition(resolveGarmentEntity(analysis, extraction));
+    const fields = { ...analysis.fields } as any;
+
+    for (const [key, resolvedField] of Object.entries(resolved)) {
+      const current = fields[key];
+      if (Array.isArray((resolvedField as any).value)) {
+        const mergedValues = Array.from(new Set([...(current?.value || []), ...((resolvedField as any).value || [])])).slice(0, 20);
+        fields[key] = {
+          ...resolvedField,
+          value: mergedValues,
+          confidence: Math.max(current?.confidence || 0, (resolvedField as any).confidence || 0)
+        };
+        continue;
+      }
+
+      if ((resolvedField as any).value !== null && ((resolvedField as any).confidence || 0) >= (current?.confidence || 0)) {
+        fields[key] = resolvedField;
+      }
+    }
+
+    const entityWarnings = (fields.entityWarnings?.value || []) as string[];
+    return {
+      ...analysis,
+      fields,
+      labelWarnings: [...analysis.labelWarnings, ...entityWarnings].slice(0, 10)
+    };
+  } catch {
+    return withReviewWarning(analysis, "Advanced garment recognition is unavailable; please verify manually.");
+  }
+}
+
 export function analysisToSuggestedTags(analysis: WardrobeAiAnalysis): AiSuggestedWardrobeTags {
   const fields = analysis.fields;
   const confidence = averageConfidence(analysis);
+  const entityName = fields.recognizedEntity.value && fields.recognizedEntity.confidence >= 0.65
+    ? fields.recognizedEntity.value
+    : "";
 
   return {
-    name: [fields.primaryColor.value, fields.garmentType.value].filter(Boolean).join(" ").trim() || undefined,
+    name: entityName || [fields.primaryColor.value, fields.garmentType.value].filter(Boolean).join(" ").trim() || undefined,
     category: fields.category.value || undefined,
-    subcategory: fields.subcategory.value || fields.garmentType.value || "",
+    subcategory: fields.subcategory.value || fields.garmentType.value || (fields.sportCategory.value ? "jersey" : ""),
     color: fields.primaryColor.value || "",
     pattern: fields.pattern.value || "",
     fabric: fields.fabricComposition.value || fields.fabricEstimate.value || "",
@@ -176,7 +213,7 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
     });
 
     const labelResult = await extractLabelMetadata(input.images?.label);
-    const mergedAnalysis = mergeLabelExtraction(visionAnalysis, labelResult.extraction);
+    const mergedAnalysis = mergeEntityRecognition(mergeLabelExtraction(visionAnalysis, labelResult.extraction), labelResult.extraction);
     const analysis = wardrobeAiAnalysisSchema.parse({
       ...mergedAnalysis,
       labelExtractionStatus: labelResult.status,

@@ -384,6 +384,7 @@ export function serializeOutfit(
     addLater: outfit.addLater || "",
     confidenceScore: outfit.confidenceScore || 0,
     stylingTips: outfit.stylingTips || [],
+    source: outfit.source || "rule_based",
     preview: outfit.preview || {
       status: "not_started",
       provider: "",

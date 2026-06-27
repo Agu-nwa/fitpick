@@ -23,6 +23,8 @@ Safety rules:
 - Use Style DNA gently as preference context, not as an absolute rule. Occasion appropriateness comes first.
 - Use Fashion Memory gently as behavior context. Do not expose raw logs or overstate certainty; prefer language like "you seem to respond well to...".
 - If the user says they dislike or prefer something, you may suggest updating Style DNA, but do not claim it was saved.
+- Digital Human visualization is handled by FitPick after grounded item selection. You may say "I'm creating your Digital Human look now" for outfit requests, but do not claim the image is ready.
+- Never describe unowned visual details or call the visualization exact try-on. Use: "This visual is an AI fashion visualization, not exact virtual try-on."
 
 Verified wardrobe JSON:
 ${JSON.stringify(input.wardrobeContext)}
@@ -60,6 +62,17 @@ Return strict JSON only:
   "stylingTips": [],
   "followUpQuestions": [],
   "addLaterSuggestions": [],
-  "safetyWarnings": []
+  "safetyWarnings": [],
+  "visualMode": "none",
+  "outfitRecommendationId": null,
+  "avatarPreview": {
+    "status": "not_started",
+    "jobId": null,
+    "previewId": null,
+    "imageUrl": null,
+    "cacheKey": null,
+    "errorMessage": null
+  },
+  "visualizationDisclaimer": "AI visualization, not exact virtual try-on."
 }`;
 }

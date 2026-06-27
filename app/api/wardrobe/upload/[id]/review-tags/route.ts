@@ -8,6 +8,7 @@ import { rateLimitPlaceholder } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { inferCondition, isObjectId, serializeWardrobeItem, serializeWardrobeUpload } from "@/lib/wardrobe";
+import { backgroundJobsEnabled, enqueueJob } from "@/lib/jobs/queue";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { uploadTagReviewSchema } from "@/schemas/wardrobe.schema";
@@ -110,6 +111,25 @@ export async function POST(request: NextRequest, context: RouteContext) {
     upload.reviewedAt = new Date();
     upload.aiTagStatus = "completed";
     await upload.save();
+
+    if (backgroundJobsEnabled()) {
+      await Promise.all(
+        (["front", "back"] as const)
+          .filter((slot) => (item.images as any)?.[slot]?.storageKey)
+          .map((slot) =>
+            enqueueJob(
+              "garment_background_processing",
+              {
+                wardrobeItemId: String(item._id),
+                imageSlot: slot,
+                originalStorageKey: (item.images as any)?.[slot]?.storageKey,
+                studioBackgroundPreset: process.env.FITPICK_STUDIO_BACKGROUND_PRESET || "ivory"
+              },
+              { userId: auth.user._id, maxAttempts: 2 }
+            )
+          )
+      );
+    }
 
     await recordAuditEvent({
       request,

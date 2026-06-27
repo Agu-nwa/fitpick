@@ -40,13 +40,22 @@ const OutfitRecommendationSchema = new Schema(
       lastAttemptAt: { type: Date, default: null }
     },
     swapGroups: { type: Schema.Types.Mixed, default: [] },
-    source: { type: String, enum: ["rule_based", "manual", "ai_placeholder", "ai"], default: "rule_based" }
+    source: {
+      type: String,
+      enum: ["rule_based", "manual", "ai_placeholder", "ai", "outfit_page", "stylist_chat", "system"],
+      default: "rule_based",
+      index: true
+    },
+    requestText: { type: String, default: "", maxlength: 220 },
+    reuseKey: { type: String, default: "", maxlength: 96, index: true },
+    reasoningMetadata: { type: Schema.Types.Mixed, default: {} }
   },
   { timestamps: true }
 );
 
 OutfitRecommendationSchema.index({ userId: 1, occasion: 1 });
 OutfitRecommendationSchema.index({ userId: 1, createdAt: -1 });
+OutfitRecommendationSchema.index({ userId: 1, source: 1, reuseKey: 1 });
 
 export type OutfitRecommendationDocument = InferSchemaType<typeof OutfitRecommendationSchema> & {
   _id: mongoose.Types.ObjectId;

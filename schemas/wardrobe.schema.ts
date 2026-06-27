@@ -93,13 +93,38 @@ const allowedMimeTypes = [
 
 const imagePurposeSchema = z.enum(["front", "back", "fabricCloseUp", "label", "additional"]);
 
+const wardrobeImageVariantSchema = z
+  .object({
+    url: z.string().trim().url().max(600).optional().or(z.literal("")),
+    storageKey: z.string().trim().max(260).optional().or(z.literal("")),
+    provider: z.enum(["local_placeholder", "metadata", "s3"]).default("s3"),
+    width: z.number().int().nonnegative().max(12000).optional(),
+    height: z.number().int().nonnegative().max(12000).optional(),
+    bytes: z.number().int().nonnegative().max(20 * 1024 * 1024).optional(),
+    status: z.enum(["not_started", "processing", "ready", "failed", "unavailable"]).optional(),
+    backgroundPreset: z.string().trim().max(80).optional().or(z.literal("")),
+    processedAt: z.string().datetime().optional(),
+    errorMessage: z.string().trim().max(180).optional().or(z.literal(""))
+  })
+  .strict();
+
+const wardrobeImageVariantsSchema = z
+  .object({
+    original: wardrobeImageVariantSchema.optional(),
+    cutout: wardrobeImageVariantSchema.optional(),
+    studio: wardrobeImageVariantSchema.optional(),
+    thumbnail: wardrobeImageVariantSchema.optional()
+  })
+  .strict();
+
 const wardrobeImageAssetSchema = z
   .object({
     url: z.string().trim().url().max(600),
     storageKey: z.string().trim().max(260),
     provider: z.enum(["local_placeholder", "metadata", "s3"]).default("metadata"),
     uploadedAt: z.string().datetime().optional(),
-    purpose: imagePurposeSchema
+    purpose: imagePurposeSchema,
+    variants: wardrobeImageVariantsSchema.optional()
   })
   .strict();
 

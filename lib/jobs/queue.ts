@@ -7,6 +7,7 @@ export type BackgroundJobType =
   | "label_ocr"
   | "outfit_preview_generation"
   | "avatar_preview_generation"
+  | "garment_background_processing"
   | "style_profile_learning"
   | "memory_rollup";
 

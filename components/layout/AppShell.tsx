@@ -15,7 +15,7 @@ export function AppShell({ children, showNav = true, className }: { children: Re
         initial={reduceMotion ? false : { opacity: 0, y: 8 }}
         animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
-        className={cn("flex-1 px-5 pb-28 pt-[calc(1.5rem+var(--safe-top))]", className)}
+        className={cn("flex-1 px-5 pb-[calc(7.5rem+var(--safe-bottom))] pt-[calc(1.5rem+var(--safe-top))]", className)}
       >
         {children}
       </motion.div>

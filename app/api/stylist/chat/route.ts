@@ -14,11 +14,19 @@ import { rateLimitPlaceholder } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-profile/style-profile";
 import { getMemorySummary, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
+import {
+  createOrReuseStylistOutfitRecommendation,
+  serializeStylistVisualization,
+  shouldGenerateVisualization,
+  triggerDigitalHumanPreviewForStylist
+} from "@/lib/stylist/stylist-visualization";
 import { WardrobeItem } from "@/models/WardrobeItem";
 
 const stylistChatSchema = z.object({
   message: z.string().trim().min(1).max(800),
   allowShoppingAdvice: z.boolean().default(false),
+  includeVisualization: z.boolean().optional(),
+  visualMode: z.enum(["digital_human", "premium_preview", "none"]).optional(),
   recentMessages: z
     .array(
       z.object({
@@ -131,9 +139,95 @@ export async function POST(request: NextRequest) {
       deterministicRecommendation: stylistRecommendation
     });
 
+    let visualization = serializeStylistVisualization();
+    let persistedOutfit: Awaited<ReturnType<typeof createOrReuseStylistOutfitRecommendation>> = null;
+    const visualMode = parsed.data.visualMode || "digital_human";
+    const hasOutfit = Boolean(deterministicRecommendation.items?.length);
+    const wantsVisualization = shouldGenerateVisualization(response.stylist.intent, sanitizedMessage, {
+      includeVisualization: parsed.data.includeVisualization,
+      visualMode,
+      hasOutfit
+    });
+
+    if (wantsVisualization) {
+      const visualizationLimited = rateLimitPlaceholder({
+        key: `stylist-visualization:${String(auth.user._id)}`,
+        limit: 6,
+        windowMs: 60 * 1000,
+        operation: "stylist-visualization"
+      });
+
+      if (visualizationLimited) {
+        visualization = serializeStylistVisualization({
+          visualMode,
+          avatarPreview: {
+            status: "failed",
+            jobId: null,
+            previewId: null,
+            imageUrl: null,
+            cacheKey: null,
+            errorMessage: "Digital Human generation is busy right now. Please try again shortly."
+          }
+        });
+      } else {
+        try {
+          persistedOutfit = await createOrReuseStylistOutfitRecommendation(
+            String(auth.user._id),
+            deterministicRecommendation,
+            {
+              ownedItemIds: stylistContext.ownedItemIds,
+              requestText: sanitizedMessage,
+              source: "stylist_chat"
+            }
+          );
+
+          visualization = persistedOutfit
+            ? await triggerDigitalHumanPreviewForStylist(String(auth.user._id), persistedOutfit.outfitRecommendationId, { visualMode })
+            : serializeStylistVisualization({
+                visualMode,
+                avatarPreview: {
+                  status: "not_started",
+                  jobId: null,
+                  previewId: null,
+                  imageUrl: null,
+                  cacheKey: null,
+                  errorMessage: "FitPick could not assemble a complete owned outfit to visualize."
+                }
+              });
+        } catch (error) {
+          logSafeError("stylist.visualization", error);
+          visualization = serializeStylistVisualization({
+            visualMode,
+            outfitRecommendationId: persistedOutfit?.outfitRecommendationId || null,
+            avatarPreview: {
+              status: "failed",
+              jobId: null,
+              previewId: null,
+              imageUrl: null,
+              cacheKey: null,
+              errorMessage: "Unable to create the Digital Human look right now."
+            }
+          });
+        }
+      }
+    }
+
+    const stylist = {
+      ...response.stylist,
+      visualMode: visualization.visualMode,
+      outfitRecommendationId: visualization.outfitRecommendationId,
+      avatarPreview: visualization.avatarPreview,
+      visualizationDisclaimer: visualization.visualizationDisclaimer
+    };
+
     return apiSuccess({
       reply: response.reply,
-      stylist: response.stylist,
+      stylist,
+      outfitRecommendationId: visualization.outfitRecommendationId,
+      avatarPreview: visualization.avatarPreview,
+      visualization,
+      outfit: persistedOutfit?.serializedOutfit || null,
+      job: visualization.job,
       groundedItemCount: wardrobe.length
     });
   } catch (error) {

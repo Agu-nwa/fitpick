@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
         swapGroups:
           built.swapGroups,
 
-        source: "rule_based"
+        source: "outfit_page"
       });
 
     await recordAuditEvent({

@@ -2,7 +2,7 @@ import type { ApiFailure, ApiResponse } from "@/types/api";
 import type { AiSuggestedWardrobeTags, WardrobeImageAsset } from "@/types/ai-tagging";
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import type { Occasion } from "@/types/occasion";
-import type { OutfitRecommendation } from "@/types/outfit";
+import type { OutfitRecommendation, StylistAvatarPreview, StylistResponse, StylistVisualMode } from "@/types/outfit";
 import type { WardrobeItem, WardrobeSummary } from "@/types/wardrobe";
 
 type RequestOptions = Omit<RequestInit, "body"> & {
@@ -78,6 +78,17 @@ export type WardrobeArchiveData = {
   item?: WardrobeItem;
   archived?: boolean;
   deleted?: boolean;
+};
+
+export type ImageProcessingData = {
+  processing: {
+    ok?: boolean;
+    status: "not_started" | "processing" | "ready" | "failed" | "unavailable" | string;
+    safeMessage?: string;
+    variants?: Record<string, unknown>;
+    image?: Record<string, unknown> | null;
+  };
+  job?: JobStatusData["job"];
 };
 
 export type WardrobeUploadRecord = {
@@ -322,6 +333,30 @@ export type AvatarPreviewData = {
   job?: JobStatusData["job"];
 };
 
+export type StylistChatData = {
+  reply: string;
+  stylist: StylistResponse;
+  outfitRecommendationId: string | null;
+  avatarPreview: StylistAvatarPreview;
+  visualization: {
+    visualMode: StylistVisualMode;
+    outfitRecommendationId: string | null;
+    avatarPreview: StylistAvatarPreview;
+    visualizationDisclaimer: string;
+    job?: JobStatusData["job"];
+  };
+  outfit: OutfitRecommendation | null;
+  job?: JobStatusData["job"];
+  groundedItemCount: number;
+};
+
+export type SendStylistMessageOptions = {
+  allowShoppingAdvice?: boolean;
+  includeVisualization?: boolean;
+  visualMode?: StylistVisualMode;
+  recentMessages?: Array<{ role: "user" | "assistant"; content: string }>;
+};
+
 export type FashionMemorySummary = {
   eventCount: number;
   positive: {
@@ -428,6 +463,9 @@ export const getOutfitPreview = (id: string) => apiRequest<OutfitPreviewData>(`/
 export const generateOutfitPreview = (id: string, options: unknown = {}) =>
   apiRequest<OutfitPreviewData>(`/api/outfits/${id}/preview`, { method: "POST", body: options });
 export const getJobStatus = (id: string) => apiRequest<JobStatusData>(`/api/jobs/${id}`, { cache: "no-store" });
+export const getImageProcessingStatus = (jobId: string) => getJobStatus(jobId);
+export const reprocessWardrobeImage = (id: string, body: unknown) =>
+  apiRequest<ImageProcessingData>(`/api/wardrobe/${id}/image-processing`, { method: "POST", body });
 export const saveOutfit = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/save`, { method: "POST", body });
 export const wearOutfit = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/wear`, { method: "POST", body });
 export const submitOutfitFeedback = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/feedback`, { method: "POST", body });
@@ -449,3 +487,16 @@ export const updateAvatarProfile = (body: unknown) => apiRequest<AvatarProfileDa
 export const getAvatarPreview = (id: string) => apiRequest<AvatarPreviewData>(`/api/outfits/${id}/avatar-preview`, { cache: "no-store" });
 export const generateAvatarPreview = (id: string, options: unknown = {}) =>
   apiRequest<AvatarPreviewData>(`/api/outfits/${id}/avatar-preview`, { method: "POST", body: options });
+export const sendStylistMessage = (message: string, options: SendStylistMessageOptions = {}) =>
+  apiRequest<StylistChatData>("/api/stylist/chat", {
+    method: "POST",
+    body: {
+      message,
+      ...options
+    }
+  });
+export const pollStylistVisualization = (input: { jobId?: string | null; outfitRecommendationId?: string | null }) => {
+  if (input.jobId) return getJobStatus(input.jobId);
+  if (input.outfitRecommendationId) return getAvatarPreview(input.outfitRecommendationId);
+  return Promise.resolve(invalidResponse);
+};

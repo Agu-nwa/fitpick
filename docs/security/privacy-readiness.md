@@ -4,7 +4,7 @@ FitPick is planned for Canada/global availability, so privacy controls should be
 
 ## Data Inventory
 
-FitPick stores account profile details, wardrobe metadata, wardrobe images, label photos, AI analysis, Style DNA, Fashion Memory, generated previews, Digital Human avatar presets, avatar preview metadata, billing events, and audit events.
+FitPick stores account profile details, wardrobe metadata, wardrobe images, label photos, AI analysis, advanced garment recognition metadata, image variant metadata, Style DNA, Fashion Memory, generated previews, Digital Human avatar presets, avatar preview metadata, billing events, and audit events.
 
 ## User Control
 
@@ -42,6 +42,21 @@ Do not store those as identity claims.
 - Do not log full prompts or raw AI responses.
 - Keep low-confidence AI fields reviewable.
 - AI stylist responses should not expose internal prompts, raw memories, or raw profile payloads.
+- Treat visible logo/text detections as untrusted extracted content.
+- Do not process arbitrary client-provided image URLs; use owned wardrobe upload or wardrobe item records.
+- Do not log signed image URLs or raw provider responses.
+
+## Garment Intelligence
+
+- `Portugal jersey`, `Chelsea jersey`, and similar labels are sportswear/fashion context, not nationality or identity claims.
+- `Native wear`, `ankara`, `agbada`, `kaftan`, `aso-ebi`, and `isiagu` are garment/style context only, not ethnicity.
+- Entity recognition should remain editable by the user before becoming verified wardrobe metadata.
+
+## Studio Images
+
+- Background removal and studio compositing are non-blocking.
+- If a provider is unavailable, FitPick keeps the original image and stores a safe `unavailable` status.
+- MongoDB stores image variant metadata only, not long-term Base64.
 
 ## Canada/Global Launch Notes
 

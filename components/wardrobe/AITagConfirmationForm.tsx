@@ -29,7 +29,7 @@ export type AITagConfirmationValues = {
   occasions: string[];
   weather: string[];
   condition: "ready" | "needs-care" | "missing-tags";
-  verifiedFields: Record<string, { value: string | string[] | null; confidence: number; originalConfidence: number; source: "user_confirmed" }>;
+  verifiedFields: Record<string, { value: string | string[] | number | null; confidence: number; originalConfidence: number; source: "user_confirmed" }>;
 };
 
 const fields: FieldConfig[] = [
@@ -43,6 +43,20 @@ const fields: FieldConfig[] = [
   { key: "fabricComposition", label: "Fabric composition" },
   { key: "size", label: "Size" },
   { key: "brand", label: "Brand" },
+  { key: "recognizedEntity", label: "Recognized entity" },
+  { key: "entityType", label: "Entity type" },
+  { key: "entityConfidence", label: "Entity confidence" },
+  { key: "sportCategory", label: "Sport category" },
+  { key: "teamOrNation", label: "Team or nation" },
+  { key: "clubOrFederation", label: "Club or federation" },
+  { key: "playerName", label: "Player name" },
+  { key: "playerNumber", label: "Player number" },
+  { key: "kitType", label: "Kit type" },
+  { key: "seasonEstimate", label: "Season estimate" },
+  { key: "logoDetections", label: "Logo detections", kind: "list" },
+  { key: "textDetections", label: "Visible text detections", kind: "list" },
+  { key: "brandSignals", label: "Brand signals", kind: "list" },
+  { key: "entityWarnings", label: "Entity warnings", kind: "list" },
   { key: "fit", label: "Fit" },
   { key: "silhouette", label: "Silhouette" },
   { key: "sleeveLength", label: "Sleeve length" },
@@ -69,7 +83,12 @@ const fieldGroups: Array<{ title: string; body: string; keys: string[] }> = [
   {
     title: "Identity",
     body: "Core information FitPick uses to find this item quickly.",
-    keys: ["garmentType", "category", "subcategory", "brand", "size"]
+    keys: ["garmentType", "category", "subcategory", "brand", "size", "recognizedEntity"]
+  },
+  {
+    title: "Advanced recognition",
+    body: "Sportswear, team, logo, brand, and native/traditional signals. FitPick is not fully certain — please verify.",
+    keys: ["entityType", "entityConfidence", "sportCategory", "teamOrNation", "clubOrFederation", "playerName", "playerNumber", "kitType", "seasonEstimate", "logoDetections", "textDetections", "brandSignals", "entityWarnings"]
   },
   {
     title: "Color and Pattern",
@@ -129,6 +148,8 @@ function clampScore(key: string, value: string) {
 function sourceLabel(source?: string) {
   if (source === "ocr") return "OCR";
   if (source === "vision") return "Vision";
+  if (source === "logo_detection") return "Logo";
+  if (source === "entity_resolver") return "Resolver";
   if (source === "system_inferred") return "System";
   if (source === "user_confirmed") return "Confirmed";
   return "Unknown";
@@ -136,6 +157,8 @@ function sourceLabel(source?: string) {
 
 function sourceTone(source?: string) {
   if (source === "ocr") return "info" as const;
+  if (source === "logo_detection") return "info" as const;
+  if (source === "entity_resolver") return "warning" as const;
   if (source === "vision") return "premium" as const;
   if (source === "user_confirmed") return "success" as const;
   if (source === "system_inferred") return "neutral" as const;

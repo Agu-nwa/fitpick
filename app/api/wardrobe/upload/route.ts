@@ -5,6 +5,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { backgroundJobsEnabled, enqueueJob } from "@/lib/jobs/queue";
 import { assertStorageConfigured, createWardrobeStorageKey, storageKeyBelongsToUser } from "@/lib/storage";
 import { logSafeError } from "@/lib/security/safe-log";
 import { getPublicStorageUrl, normalizeStorageKey } from "@/lib/storage/url";
@@ -13,7 +14,27 @@ import { serializeWardrobeUpload } from "@/lib/wardrobe";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { uploadMetadataSchema } from "@/schemas/wardrobe.schema";
 
-function sanitizeImageAssets(images: any, userId: string) {
+function withOriginalVariant(asset: any, fallback: { width?: number; height?: number; bytes?: number }) {
+  if (!asset?.url && !asset?.storageKey) return asset;
+  return {
+    ...asset,
+    variants: {
+      ...(asset.variants || {}),
+      original: {
+        url: asset.url || "",
+        storageKey: asset.storageKey || "",
+        provider: asset.provider || "s3",
+        width: fallback.width || 0,
+        height: fallback.height || 0,
+        bytes: fallback.bytes || 0,
+        status: "ready",
+        processedAt: asset.uploadedAt || new Date().toISOString()
+      }
+    }
+  };
+}
+
+function sanitizeImageAssets(images: any, userId: string, fallback: { width?: number; height?: number; bytes?: number }) {
   if (!images) return { ok: true as const, images: undefined };
 
   function sanitizeAsset(asset: any, purpose: string) {
@@ -24,7 +45,7 @@ function sanitizeImageAssets(images: any, userId: string) {
     }
 
     return {
-      ...asset,
+      ...withOriginalVariant(asset, fallback),
       purpose,
       storageKey,
       url: asset.provider === "s3" && storageKey ? getPublicStorageUrl(storageKey) : asset.url
@@ -72,7 +93,8 @@ export async function POST(request: NextRequest) {
       return apiError("BAD_REQUEST", "Upload object is invalid.");
     }
 
-    const sanitizedImages = sanitizeImageAssets(parsed.data.images, userId);
+    const variantFallback = { width: parsed.data.width || 0, height: parsed.data.height || 0, bytes: parsed.data.sizeBytes || 0 };
+    const sanitizedImages = sanitizeImageAssets(parsed.data.images, userId, variantFallback);
     if (!sanitizedImages.ok) return sanitizedImages.response;
 
     const storageKey =
@@ -90,7 +112,19 @@ export async function POST(request: NextRequest) {
             storageKey,
             provider: parsed.data.provider || storage.provider,
             uploadedAt: new Date().toISOString(),
-            purpose: "front"
+            purpose: "front",
+            variants: {
+              original: {
+                url: imageUrl,
+                storageKey,
+                provider: parsed.data.provider || storage.provider,
+                width: parsed.data.width || 0,
+                height: parsed.data.height || 0,
+                bytes: parsed.data.sizeBytes || 0,
+                status: "ready",
+                processedAt: new Date().toISOString()
+              }
+            }
           },
           additional: []
         }
@@ -112,6 +146,26 @@ export async function POST(request: NextRequest) {
       aiTagStatus: parsed.data.suggestedTags ? "suggested" : "not_started",
       suggestedTags: parsed.data.suggestedTags || {}
     });
+
+    if (backgroundJobsEnabled()) {
+      const processableSlots = ["front", "back"] as const;
+      await Promise.all(
+        processableSlots
+          .filter((slot) => (upload.images as any)?.[slot]?.storageKey)
+          .map((slot) =>
+            enqueueJob(
+              "garment_background_processing",
+              {
+                uploadId: String(upload._id),
+                imageSlot: slot,
+                originalStorageKey: (upload.images as any)?.[slot]?.storageKey,
+                studioBackgroundPreset: process.env.FITPICK_STUDIO_BACKGROUND_PRESET || "ivory"
+              },
+              { userId: auth.user._id, maxAttempts: 2 }
+            )
+          )
+      );
+    }
 
     await recordAuditEvent({
       request,

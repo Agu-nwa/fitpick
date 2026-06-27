@@ -17,7 +17,51 @@ export function inferCondition(input: {
   return hasMinimumTags ? "ready" : "missing-tags";
 }
 
+function imageVariantUrl(image: any, variant: "studio" | "cutout" | "thumbnail" | "original") {
+  const selected = image?.variants?.[variant];
+  return selected?.status === "ready" && selected?.url ? selected.url : "";
+}
+
+function preferredWardrobeImage(images: any = {}, fallback = "") {
+  const front = images.front || {};
+  const back = images.back || {};
+  return (
+    imageVariantUrl(front, "studio") ||
+    imageVariantUrl(back, "studio") ||
+    imageVariantUrl(front, "cutout") ||
+    imageVariantUrl(back, "cutout") ||
+    imageVariantUrl(front, "thumbnail") ||
+    imageVariantUrl(front, "original") ||
+    front.url ||
+    fallback
+  );
+}
+
+function imageProcessingStatus(images: any = {}) {
+  const slots = [images.front, images.back].filter(Boolean);
+  if (!slots.length) return "not_started";
+  const statuses = slots.flatMap((slot) => [
+    slot?.variants?.studio?.status,
+    slot?.variants?.cutout?.status
+  ]).filter(Boolean);
+  if (statuses.includes("ready")) return "ready";
+  if (statuses.includes("processing")) return "processing";
+  if (statuses.includes("failed")) return "failed";
+  if (statuses.includes("unavailable")) return "unavailable";
+  return "not_started";
+}
+
+function recognizedEntityFromItem(item: any) {
+  return (
+    item.verifiedMetadata?.recognizedEntity?.value ||
+    item.aiAnalysis?.fields?.recognizedEntity?.value ||
+    item.verifiedMetadata?.culturalTraditionalRelevance?.value ||
+    ""
+  );
+}
+
 export function serializeWardrobeItem(item: any) {
+  const imageUrl = preferredWardrobeImage(item.images || {}, item.imageUrl || "");
   return {
     id: String(item._id),
     name: item.name,
@@ -34,11 +78,14 @@ export function serializeWardrobeItem(item: any) {
     condition: item.condition,
     lastWornAt: item.lastWornAt ? new Date(item.lastWornAt).toISOString() : null,
     archivedAt: item.archivedAt ? new Date(item.archivedAt).toISOString() : null,
-    imageUrl: item.imageUrl || "",
-    thumbnailUrl: item.thumbnailUrl || "",
+    imageUrl,
+    thumbnailUrl: preferredWardrobeImage(item.images || {}, item.thumbnailUrl || imageUrl),
     images: item.images || {},
     aiAnalysis: item.aiAnalysis || null,
-    hasImage: Boolean(item.storageKey || item.thumbnailUrl)
+    hasImage: Boolean(item.storageKey || item.thumbnailUrl || imageUrl),
+    studioImageUrl: imageVariantUrl(item.images?.front, "studio") || imageVariantUrl(item.images?.back, "studio"),
+    recognizedEntity: recognizedEntityFromItem(item),
+    imageProcessingStatus: imageProcessingStatus(item.images || {})
   };
 }
 
