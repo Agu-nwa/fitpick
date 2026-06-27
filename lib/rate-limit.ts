@@ -1,4 +1,5 @@
 import { apiError } from "@/lib/api-response";
+import { logAiEvent } from "@/lib/ai/observability/ai-logger";
 
 type Bucket = {
   count: number;
@@ -7,10 +8,11 @@ type Bucket = {
 
 const buckets = new Map<string, Bucket>();
 
-export function rateLimitPlaceholder(input: {
+export function rateLimit(input: {
   key: string;
   limit?: number;
   windowMs?: number;
+  operation?: string;
 }) {
   const limit = input.limit ?? 20;
   const windowMs = input.windowMs ?? 60_000;
@@ -25,8 +27,17 @@ export function rateLimitPlaceholder(input: {
   current.count += 1;
 
   if (current.count > limit) {
+    logAiEvent({
+      operation: input.operation || "rate-limit",
+      model: "system",
+      latencyMs: 0,
+      status: "failed",
+      errorCategory: "rate_limit_exceeded"
+    });
     return apiError("RATE_LIMITED", "Too many requests. Please try again shortly.");
   }
 
   return null;
 }
+
+export const rateLimitPlaceholder = rateLimit;

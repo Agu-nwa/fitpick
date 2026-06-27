@@ -52,7 +52,7 @@ export default function BackendReadyPage() {
             ["API client available", "Safe requests include credentials and mobile-friendly fallback messages.", "complete"],
             ["Health endpoint connected", "GET /api/health is checked from the readiness screen.", "complete"],
             ["Session check connected", "GET /api/auth/me is checked without forcing route protection yet.", "complete"],
-            ["Cloudinary storage integrated", "Signed upload and wardrobe image metadata flows are connected.", "complete"],
+            ["S3 storage integrated", "Signed upload, wardrobe image metadata, and generated previews use S3.", "complete"],
             ["AI tagging foundation integrated", "Uploaded clothing photos can request suggested tags before user review.", "complete"],
             ["Testing complete", "Route, safety, secret, build, and smoke-test scripts are available.", "complete"],
             ["Deployment started", "PM2, Nginx, security group, HTTPS, and production checklist docs are available.", "next"]

@@ -1,5 +1,5 @@
 import { aiTaggingResultSchema, aiSuggestedWardrobeTagsSchema } from "@/schemas/ai-tagging.schema";
-import { suggestWithCloudinaryProvider } from "@/lib/ai/providers/cloudinary-tagging";
+import { analyzeWardrobeImages } from "@/lib/ai/wardrobe-analysis";
 import { suggestWithGeminiProvider } from "@/lib/ai/providers/gemini-tagging";
 import { suggestWithMockProvider } from "@/lib/ai/providers/mock-tagging";
 import type { AiSuggestedWardrobeTags, AiTaggingInput, AiTaggingProvider, AiTaggingResult } from "@/types/ai-tagging";
@@ -14,7 +14,7 @@ const safeFailedResult: AiTaggingResult = {
 
 export function getAiTaggingProvider(): AiTaggingProvider {
   const provider = process.env.AI_TAGGING_PROVIDER;
-  if (provider === "cloudinary" || provider === "gemini" || provider === "openai" || provider === "mock") return provider;
+  if (provider === "gemini" || provider === "openai" || provider === "mock") return provider;
   return "mock";
 }
 
@@ -47,12 +47,10 @@ export async function suggestWardrobeTags(input: AiTaggingInput): Promise<AiTagg
   const provider = getAiTaggingProvider();
   try {
     const result =
-      provider === "cloudinary"
-        ? await suggestWithCloudinaryProvider(input)
-        : provider === "gemini"
+      provider === "gemini"
           ? await suggestWithGeminiProvider(input)
           : provider === "openai"
-            ? await suggestWithOpenAiProvider(input)
+            ? await analyzeWardrobeImages(input)
             : await suggestWithMockProvider(input);
 
     return validateSuggestedTags(normalizeSuggestedTags(result));

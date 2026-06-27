@@ -4,7 +4,7 @@
 
 - Frontend Phase 4D: mobile-first app shell, routes, mock screens, and UI states.
 - Backend Phase 5A-5E: auth, sessions, MongoDB models, wardrobe, uploads, occasions, outfits, looks, preferences, notifications, Plus, audit, and safe API responses.
-- Cloudinary Storage Integration: signed upload foundation, image metadata, and safe not-configured fallback.
+- S3 Storage Integration: signed upload foundation, image metadata, CloudFront URLs, and safe not-configured fallback.
 - AI Tagging Phase: provider-based clothing tag suggestions with mandatory user review.
 - Integration Phase 6A-6F: API client, auth, wardrobe, upload, AI tagging, occasion, outfit recommendation, looks, preferences, Plus status, payment foundation, and readiness cleanup.
 
@@ -34,12 +34,12 @@
 - Logged-out users see auth-required cards and example previews where useful.
 - Backend unavailable states use safe copy and preserve helpful mock previews.
 - Empty wardrobe and looks states guide users toward next actions.
-- Cloudinary, AI tagging, Stripe, and Paystack return safe not-configured messages when environment variables are missing.
+- S3, AI tagging, Stripe, and Paystack return safe not-configured messages when environment variables are missing.
 
 ## Environment Variables
 
 - App/auth: `APP_URL`, `NEXT_PUBLIC_APP_URL`, `MONGODB_URI`, `JWT_SECRET`, `SESSION_COOKIE_NAME`
-- Storage: `STORAGE_PROVIDER`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+- Storage: `STORAGE_PROVIDER`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL`
 - AI tagging: `AI_TAGGING_PROVIDER`, `GEMINI_API_KEY`, `OPENAI_API_KEY`
 - Payments: `PAYMENT_PROVIDER`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FITPICK_PLUS_STRIPE_PRICE_ID`, `STRIPE_SUCCESS_URL`, `STRIPE_CANCEL_URL`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_WEBHOOK_SECRET`, `FITPICK_PLUS_PAYSTACK_PLAN_CODE`, `PAYSTACK_CALLBACK_URL`, `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`
 

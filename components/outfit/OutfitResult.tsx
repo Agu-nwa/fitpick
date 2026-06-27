@@ -12,7 +12,7 @@ import { Toast } from "@/components/ui/Toast";
 import { OutfitCard } from "@/components/cards/OutfitCard";
 import { OutfitItemCard } from "@/components/outfit/OutfitItemCard";
 import { OutfitApiErrorState } from "@/components/outfit/OutfitIntegrationStates";
-import { saveOutfit, submitOutfitFeedback, swapOutfitItem, wearOutfit } from "@/lib/api-client";
+import { generateOutfitPreview, getJobStatus, recordFashionMemory, saveOutfit, submitOutfitFeedback, swapOutfitItem, wearOutfit } from "@/lib/api-client";
 import type { OutfitRecommendation } from "@/types/outfit";
 import { OutfitPreview } from "@/components/outfit/OutfitPreview";
 
@@ -46,10 +46,24 @@ function Notes({ outfit }: { outfit: OutfitRecommendation }) {
     <Card>
       <p className="text-sm leading-6 text-muted">{outfit.summary}</p>
       <div className="mt-4 space-y-3 text-sm text-muted">
+        {outfit.occasionFit ? <p><strong className="text-ink">Occasion:</strong> {outfit.occasionFit}</p> : null}
+        {outfit.whyItWorks ? <p><strong className="text-ink">Why:</strong> {outfit.whyItWorks}</p> : null}
         <p><strong className="text-ink">Weather:</strong> {outfit.weatherFit}</p>
         <p><strong className="text-ink">Color:</strong> {outfit.colorNote}</p>
+        {outfit.materialNote ? <p><strong className="text-ink">Material:</strong> {outfit.materialNote}</p> : null}
+        {outfit.silhouetteNote ? <p><strong className="text-ink">Silhouette:</strong> {outfit.silhouetteNote}</p> : null}
+        {outfit.improvementNote ? <p><strong className="text-ink">Improve:</strong> {outfit.improvementNote}</p> : null}
+        {outfit.addLater ? <p><strong className="text-ink">Add later:</strong> {outfit.addLater}</p> : null}
         <p><strong className="text-ink">Repeat:</strong> {outfit.repeatNote}</p>
         <p><strong className="text-ink">Care:</strong> {outfit.careNote}</p>
+        {outfit.stylingTips?.length ? (
+          <div>
+            <strong className="text-ink">Styling tips:</strong>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {outfit.stylingTips.map((tip) => <Chip key={tip}>{tip}</Chip>)}
+            </div>
+          </div>
+        ) : null}
       </div>
     </Card>
   );
@@ -75,7 +89,25 @@ export function OutfitResult({
   const [toast, setToast] = useState("");
   const [actionFailed, setActionFailed] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const previewUrl = outfit.items[0]?.imageUrl || outfit.items[0]?.thumbnailUrl || "";
+  const [previewUrl, setPreviewUrl] = useState(outfit.preview?.imageUrl || "");
+  const [previewStatus, setPreviewStatus] = useState(outfit.preview?.status || "not_started");
+  const [previewError, setPreviewError] = useState("");
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  const [previewJobId, setPreviewJobId] = useState("");
+  const outfitItemIds = outfit.items.map((item) => item.id).filter(Boolean);
+
+  async function remember(type: string, ratingValue?: number, feedbackText?: string) {
+    return recordFashionMemory({
+      type,
+      itemIds: outfitItemIds,
+      outfitId: outfit.id,
+      recommendationId: outfit.id,
+      occasion: outfit.occasion,
+      rating: ratingValue,
+      feedbackText,
+      source: "outfit_ui"
+    });
+  }
 
   async function handleSwap() {
     if (!selectedItemId) return;
@@ -102,7 +134,8 @@ export function OutfitResult({
     setActionFailed(false);
     const result = await saveOutfit(outfit.id, { title: outfit.title, favorite });
     if (result.ok) {
-      setToast(favorite ? "Added to favorites" : "Look saved");
+      await remember(favorite ? "item_favorited" : "outfit_saved", favorite ? 5 : 4, favorite ? "Favorited from outfit UI" : "Saved from outfit UI");
+      setToast(favorite ? "Refined your style" : "Save this look");
       window.setTimeout(() => setToast(""), 1800);
       return;
     }
@@ -113,6 +146,7 @@ export function OutfitResult({
     setActionFailed(false);
     const result = await wearOutfit(outfit.id, { wornAt: new Date().toISOString(), rating: feedbackRatings.find((item) => item.value === rating)?.label || "Good" });
     if (result.ok) {
+      await remember("item_worn", rating, "Marked as worn from outfit UI");
       setToast("Marked as worn");
       window.setTimeout(() => setToast(""), 1800);
       return;
@@ -122,9 +156,11 @@ export function OutfitResult({
 
   async function handleFeedback() {
     setActionFailed(false);
-    const result = await submitOutfitFeedback(outfit.id, { rating, feedbackTags: selectedFeedbackTags });
+    const liked = rating >= 4;
+    const result = await submitOutfitFeedback(outfit.id, { liked, reason: selectedFeedbackTags.join(", ") });
+    await remember(liked ? "outfit_liked" : "outfit_disliked", rating, selectedFeedbackTags.join(", "));
     if (result.ok) {
-      setToast("Feedback saved");
+      setToast("Refine my style saved");
       window.setTimeout(() => setToast(""), 1800);
       setFeedbackOpen(false);
       return;
@@ -132,16 +168,121 @@ export function OutfitResult({
     setActionFailed(true);
   }
 
+  async function handleQuickMemory(type: "outfit_liked" | "outfit_rejected") {
+    setActionFailed(false);
+    const result = await remember(type, type === "outfit_liked" ? 5 : 1, type === "outfit_liked" ? "Liked from outfit UI" : "Not my style");
+    if (result.ok) {
+      setToast(type === "outfit_liked" ? "Refined your style" : "Not my style saved");
+      window.setTimeout(() => setToast(""), 1800);
+      return;
+    }
+    setActionFailed(true);
+  }
+
+  async function handleGeneratePreview(regenerate = false) {
+    setPreviewError("");
+    setIsGeneratingPreview(true);
+    setPreviewStatus("generating");
+
+    const result = await generateOutfitPreview(outfit.id, {
+      style: "flat_lay",
+      regenerate
+    });
+
+    setIsGeneratingPreview(false);
+
+    if (result.ok) {
+      const preview = result.data.preview;
+      setPreviewStatus(preview.status);
+      setPreviewUrl(preview.imageUrl || preview.previewUrl || "");
+      setPreviewJobId(result.data.job?.id || "");
+      if (preview.imageUrl || preview.previewUrl) setPreviewOpen(true);
+      if (result.data.job?.id && preview.status !== "ready") {
+        setToast("Your preview is being styled.");
+        void pollPreviewJob(result.data.job.id);
+        return;
+      }
+      setToast(preview.cached ? "Cached preview loaded" : "Preview ready.");
+      window.setTimeout(() => setToast(""), 1800);
+      return;
+    }
+
+    setPreviewStatus("failed");
+    setPreviewError(result.error.message || "Unable to generate preview right now.");
+  }
+
+  async function pollPreviewJob(jobId: string) {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 2500));
+      const result = await getJobStatus(jobId);
+      if (!result.ok) continue;
+
+      const job = result.data.job;
+      setPreviewStatus(job.status === "completed" ? "ready" : job.status);
+
+      if (job.status === "completed") {
+        const preview = job.result?.preview || {};
+        const url = preview.imageUrl || preview.previewUrl || "";
+        if (url) {
+          setPreviewUrl(url);
+          setPreviewOpen(true);
+        }
+        setPreviewJobId("");
+        setToast("Preview ready.");
+        window.setTimeout(() => setToast(""), 1800);
+        return;
+      }
+
+      if (job.status === "failed" || job.status === "cancelled") {
+        setPreviewError(job.errorMessage || "Unable to generate preview right now.");
+        setPreviewJobId("");
+        return;
+      }
+    }
+
+    setPreviewError("This may take a moment for premium AI processing. Check back shortly.");
+  }
+
   return (
     <>
       <OutfitCard outfit={outfit} />
 
       <section className="mt-7">
-        <SectionHeader title="AI Outfit Preview" />
+        <SectionHeader title="Premium AI Preview" />
 
-        <div className="mt-4">
-          <Button onClick={() => setPreviewOpen(true)}>View preview</Button>
-        </div>
+        <Card className="mt-4">
+          {previewUrl ? (
+            <button
+              type="button"
+              className="focus-ring block w-full overflow-hidden rounded-xl border border-line bg-canvas"
+              onClick={() => setPreviewOpen(true)}
+            >
+              <img src={previewUrl} alt={`${outfit.title} AI preview`} className="aspect-square w-full object-cover" />
+            </button>
+          ) : (
+            <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-line bg-canvas px-5 text-center">
+              <p className="text-sm leading-6 text-muted">Generate a premium AI visualization from your owned wardrobe items.</p>
+            </div>
+          )}
+
+          <p className="mt-3 text-xs leading-5 text-muted">AI visualization only, not an exact virtual try-on.</p>
+          {previewStatus === "queued" || previewStatus === "processing" || previewStatus === "generating" ? (
+            <p className="mt-3 text-sm font-semibold text-cocoa">Your preview is being styled. This may take a moment for premium AI processing.</p>
+          ) : null}
+          {previewJobId ? <p className="mt-2 text-xs text-muted">Job queued: {previewJobId.slice(-8)}</p> : null}
+          {previewError ? <p className="mt-3 text-sm font-semibold text-red-600">{previewError}</p> : null}
+
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Button onClick={() => void handleGeneratePreview(false)} disabled={isGeneratingPreview || previewStatus === "generating"}>
+              {isGeneratingPreview ? "Generating..." : previewUrl ? "View cached preview" : "Generate premium preview"}
+            </Button>
+            {previewUrl ? (
+              <Button variant="secondary" onClick={() => void handleGeneratePreview(true)} disabled={isGeneratingPreview}>
+                Regenerate preview
+              </Button>
+            ) : null}
+          </div>
+        </Card>
 
         {previewOpen ? (
           <OutfitPreview
@@ -190,9 +331,11 @@ export function OutfitResult({
       {actionFailed ? <div className="mt-6"><OutfitApiErrorState /></div> : null}
 
       <CTABar className="mt-6 grid grid-cols-2 gap-2">
-        {canSwap ? <Button onClick={() => void handleWear()}>Wear this</Button> : <Link href="/wardrobe/add"><Button className="w-full">Add clothes</Button></Link>}
+        {canSwap ? <Button onClick={() => void handleQuickMemory("outfit_liked")}>Refine my style</Button> : <Link href="/wardrobe/add"><Button className="w-full">Add clothes</Button></Link>}
         {canSwap ? <Button variant="secondary" onClick={() => setSwapOpen(true)}>Swap item</Button> : <Link href={`/outfit/${outfit.id}`}><Button variant="secondary" className="w-full">Open detail</Button></Link>}
-        {canSwap ? <Button variant="secondary" onClick={() => void handleSave(false)}>Save look</Button> : null}
+        {canSwap ? <Button variant="secondary" onClick={() => void handleSave(false)}>Save this look</Button> : null}
+        {canSwap ? <Button variant="secondary" onClick={() => void handleWear()}>Mark as worn</Button> : null}
+        {canSwap ? <Button variant="ghost" onClick={() => void handleQuickMemory("outfit_rejected")}>Not my style</Button> : null}
         {canSwap ? <Button variant="ghost" onClick={() => setFeedbackOpen(true)}>Rate</Button> : null}
       </CTABar>
       <Toast show={Boolean(toast)} message={toast} />
@@ -247,28 +390,8 @@ export function OutfitResult({
             ))}
           </div>
         </div>
-        <button
-          className="rounded-xl bg-black px-4 py-2 text-white"
-        >
-          Generate AI Preview
-        </button>
         <Button className="mt-5 w-full" onClick={() => void handleFeedback()}>Save feedback</Button>
-        <Button className="mt-2 w-full" variant="ghost" onClick={() => void handleSave(true)}>Favorite this look
-          <Button
-            className="mt-5 w-full"
-            onClick={() => void handleFeedback()}
-          >
-            Save feedback
-          </Button>
-
-          <Button
-            className="mt-2 w-full"
-            variant="ghost"
-            onClick={() => void handleSave(true)}
-          >
-            Favorite this look
-          </Button>
-        </Button>
+        <Button className="mt-2 w-full" variant="ghost" onClick={() => void handleSave(true)}>Favorite this look</Button>
       </BottomSheet>
     </>
   );

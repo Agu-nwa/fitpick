@@ -1,5 +1,6 @@
 import type { ApiFailure, ApiResponse } from "@/types/api";
-import type { AiSuggestedWardrobeTags } from "@/types/ai-tagging";
+import type { AiSuggestedWardrobeTags, WardrobeImageAsset } from "@/types/ai-tagging";
+import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import type { Occasion } from "@/types/occasion";
 import type { OutfitRecommendation } from "@/types/outfit";
 import type { WardrobeItem, WardrobeSummary } from "@/types/wardrobe";
@@ -93,6 +94,14 @@ export type WardrobeUploadRecord = {
   aiErrorSafeMessage?: string;
   imageUrl?: string;
   thumbnailUrl?: string;
+  images?: {
+    front?: WardrobeImageAsset;
+    back?: WardrobeImageAsset;
+    fabricCloseUp?: WardrobeImageAsset;
+    label?: WardrobeImageAsset;
+    additional?: WardrobeImageAsset[];
+  };
+  aiAnalysis?: WardrobeAiAnalysis | null;
   suggestedTags: Record<string, unknown>;
   reviewedAt: string | null;
   createdItemId: string | null;
@@ -104,6 +113,9 @@ export type SignedUploadData = {
     provider: string;
     storageKey: string;
     uploadUrl?: string;
+    method?: string;
+    headers?: Record<string, string>;
+    publicUrl?: string;
     signature?: string;
     timestamp?: number;
     apiKey?: string;
@@ -127,6 +139,10 @@ export type WardrobeUploadData = {
   nextAction?: string;
 };
 
+export type WardrobeUploadDetailData = {
+  upload: WardrobeUploadRecord;
+};
+
 export type WardrobeUploadReviewData = {
   item: WardrobeItem;
   upload: WardrobeUploadRecord;
@@ -137,6 +153,7 @@ export type WardrobeTagSuggestionData = {
   uploadId: string;
   aiTagStatus: string;
   suggestedTags: AiSuggestedWardrobeTags;
+  aiAnalysis?: WardrobeAiAnalysis | null;
   safeMessage?: string;
 };
 
@@ -150,6 +167,44 @@ export type OccasionData = {
 
 export type OutfitData = {
   outfit: OutfitRecommendation;
+};
+
+export type OutfitPreviewData = {
+  preview: {
+    id: string;
+    status: "not_started" | "generating" | "ready" | "failed" | string;
+    provider: string;
+    storageKey: string;
+    imageUrl: string;
+    previewUrl: string;
+    cacheKey: string;
+    promptVersion: string;
+    model: string;
+    generatedAt: string | null;
+    errorMessage: string;
+    attempts: number;
+    cached: boolean;
+    visualizationNote: string;
+  };
+  job?: JobStatusData["job"];
+};
+
+export type JobStatusData = {
+  job: {
+    id: string;
+    type: string;
+    status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+    attempts: number;
+    maxAttempts: number;
+    result: Record<string, any>;
+    errorMessage: string;
+    availableAt: string | null;
+    startedAt: string | null;
+    completedAt: string | null;
+    failedAt: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+  };
 };
 
 export type SavedLookSummary = {
@@ -197,6 +252,64 @@ export type NotificationPreferencesData = {
     pushTokenExists?: boolean;
     quietHours?: { enabled?: boolean; start?: string; end?: string };
     timezone?: string;
+  };
+};
+
+export type StyleProfileData = {
+  profile: {
+    id: string;
+    favoriteColors: string[];
+    dislikedColors: string[];
+    favoriteBrands: string[];
+    dislikedBrands: string[];
+    preferredFits: string[];
+    dislikedFits: string[];
+    preferredFormality: number | null;
+    preferredOccasions: string[];
+    culturalStylePreferences: string[];
+    preferredCategories: string[];
+    avoidedCategories: string[];
+    fashionRiskLevel: "conservative" | "balanced" | "expressive";
+    comfortPriority: "low" | "medium" | "high";
+    luxuryPreference: "low" | "medium" | "high";
+    notes: string[];
+    inferredFrom: string[];
+    createdAt: string | null;
+    updatedAt: string | null;
+  };
+};
+
+export type FashionMemorySummary = {
+  eventCount: number;
+  positive: {
+    itemIds: string[];
+    colors: string[];
+    categories: string[];
+    brands: string[];
+    fits: string[];
+  };
+  negative: {
+    itemIds: string[];
+    colors: string[];
+    categories: string[];
+    brands: string[];
+    fits: string[];
+  };
+  recentlyWornItemIds: string[];
+  savedItemIds: string[];
+  occasions: string[];
+  culturalContext: string[];
+  season: string[];
+  weather: string[];
+  lastEventAt: string | null;
+};
+
+export type FashionMemoryData = {
+  summary: FashionMemorySummary;
+  memory?: {
+    id: string;
+    type: string;
+    createdAt: string | null;
   };
 };
 
@@ -255,17 +368,29 @@ export const updateWardrobeTags = (id: string, body: unknown) =>
 export const archiveWardrobeItem = (id: string) =>
   apiRequest<WardrobeArchiveData>(`/api/wardrobe/${id}`, { method: "DELETE" });
 export const uploadWardrobeMetadata = (body: unknown) => apiRequest<WardrobeUploadData>("/api/wardrobe/upload", { method: "POST", body });
+export const getWardrobeUpload = (uploadId: string) =>
+  apiRequest<WardrobeUploadDetailData>(`/api/wardrobe/upload/${uploadId}`, { cache: "no-store" });
 export const reviewWardrobeUploadTags = (uploadId: string, body: unknown) =>
   apiRequest<WardrobeUploadReviewData>(`/api/wardrobe/upload/${uploadId}/review-tags`, { method: "POST", body });
 export const suggestWardrobeUploadTags = (uploadId: string) =>
   apiRequest<WardrobeTagSuggestionData>(`/api/wardrobe/upload/${uploadId}/suggest-tags`, { method: "POST" });
+export const analyzeWardrobeUpload = (uploadId: string) =>
+  apiRequest<WardrobeTagSuggestionData>(`/api/wardrobe/upload/${uploadId}/analyze`, { method: "POST" });
+export const confirmWardrobeUploadTags = (uploadId: string, body: unknown) =>
+  apiRequest<WardrobeUploadReviewData>(`/api/wardrobe/upload/${uploadId}/confirm-tags`, { method: "POST", body });
 export const createRecommendation = (body: unknown) => apiRequest<OutfitData>("/api/outfits/recommend", { method: "POST", body });
 export const getOutfit = (id: string) => apiRequest<OutfitData>(`/api/outfits/${id}`, { cache: "no-store" });
 export const swapOutfitItem = (id: string, body: unknown) => apiRequest<OutfitData>(`/api/outfits/${id}/swap`, { method: "POST", body });
+export const getOutfitPreview = (id: string) => apiRequest<OutfitPreviewData>(`/api/outfits/${id}/preview`, { cache: "no-store" });
+export const generateOutfitPreview = (id: string, options: unknown = {}) =>
+  apiRequest<OutfitPreviewData>(`/api/outfits/${id}/preview`, { method: "POST", body: options });
+export const getJobStatus = (id: string) => apiRequest<JobStatusData>(`/api/jobs/${id}`, { cache: "no-store" });
 export const saveOutfit = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/save`, { method: "POST", body });
 export const wearOutfit = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/wear`, { method: "POST", body });
 export const submitOutfitFeedback = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/feedback`, { method: "POST", body });
 export const getLooks = () => apiRequest<LooksData>("/api/looks", { cache: "no-store" });
+export const getFashionMemorySummary = () => apiRequest<FashionMemoryData>("/api/fashion-memory", { cache: "no-store" });
+export const recordFashionMemory = (event: unknown) => apiRequest<FashionMemoryData>("/api/fashion-memory", { method: "POST", body: event });
 export const getPlusStatus = () => apiRequest<PlusStatusData>("/api/billing/plus-status", { cache: "no-store" });
 export const startCheckout = (body: unknown) => apiRequest<CheckoutData>("/api/billing/checkout", { method: "POST", body });
 export const getBillingProviders = () => apiRequest<BillingProvidersData>("/api/billing/providers", { cache: "no-store" });
@@ -274,3 +399,5 @@ export const getNotificationPreferences = () => apiRequest<NotificationPreferenc
 export const updateNotificationPreferences = (body: unknown) =>
   apiRequest<NotificationPreferencesData>("/api/notifications/preferences", { method: "PATCH", body });
 export const requestSignedUploadUrl = (body: unknown) => apiRequest<SignedUploadData>("/api/uploads/signed-url", { method: "POST", body });
+export const getStyleProfile = () => apiRequest<StyleProfileData>("/api/style-profile", { cache: "no-store" });
+export const updateStyleProfile = (body: unknown) => apiRequest<StyleProfileData>("/api/style-profile", { method: "PATCH", body });

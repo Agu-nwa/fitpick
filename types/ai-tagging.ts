@@ -1,6 +1,7 @@
 import type { WardrobeCategory, WardrobeCondition } from "@/types/wardrobe";
+import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 
-export type AiTaggingProvider = "mock" | "cloudinary" | "gemini" | "openai";
+export type AiTaggingProvider = "mock" | "gemini" | "openai";
 
 export type AiSuggestedWardrobeTags = {
   name?: string;
@@ -25,6 +26,13 @@ export type AiTaggingInput = {
   storageKey: string;
   imageUrl?: string;
   thumbnailUrl?: string;
+  images?: {
+    front?: WardrobeImageAsset;
+    back?: WardrobeImageAsset;
+    fabricCloseUp?: WardrobeImageAsset;
+    label?: WardrobeImageAsset;
+    additional?: WardrobeImageAsset[];
+  };
   suggestedTags?: Record<string, unknown>;
 };
 
@@ -33,6 +41,17 @@ export type AiTaggingResult = {
   provider: AiTaggingProvider;
   aiTagStatus: "completed" | "failed" | "needs-review";
   suggestedTags?: AiSuggestedWardrobeTags;
+  aiAnalysis?: WardrobeAiAnalysis;
   confidence?: number;
   safeMessage?: string;
+};
+
+export type WardrobeImagePurpose = "front" | "back" | "fabricCloseUp" | "label" | "additional";
+
+export type WardrobeImageAsset = {
+  url: string;
+  storageKey: string;
+  provider: string;
+  uploadedAt?: string;
+  purpose: WardrobeImagePurpose;
 };

@@ -20,7 +20,7 @@ Production traffic should go through Nginx on port 80 and, after domain setup, H
 - Nginx proxies requests to `http://127.0.0.1:3000`.
 - PM2 keeps the Next.js production server running.
 - Next.js serves frontend routes and App Router API routes.
-- MongoDB, Cloudinary, AI provider, Stripe, and Paystack are configured through environment variables.
+- MongoDB, S3/CloudFront, AI provider, Stripe, and Paystack are configured through environment variables.
 
 ## EC2 Folder Location
 
@@ -40,7 +40,7 @@ Required production groups:
 
 - App/session: `NODE_ENV`, `APP_URL`, `NEXT_PUBLIC_APP_URL`, `SESSION_COOKIE_NAME`, `JWT_SECRET`
 - Database: `MONGODB_URI`
-- Cloudinary: `STORAGE_PROVIDER`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+- S3/CloudFront: `STORAGE_PROVIDER`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL`
 - AI tagging: `AI_TAGGING_PROVIDER`, `GEMINI_API_KEY`, `OPENAI_API_KEY`
 - Payments: `PAYMENT_PROVIDER`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FITPICK_PLUS_STRIPE_PRICE_ID`, `STRIPE_SUCCESS_URL`, `STRIPE_CANCEL_URL`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_WEBHOOK_SECRET`, `FITPICK_PLUS_PAYSTACK_PLAN_CODE`, `PAYSTACK_CALLBACK_URL`, `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`
 - Optional rate limiting: `RATE_LIMIT_REDIS_URL`
@@ -178,19 +178,19 @@ Future webhook URLs:
 
 Configure webhook secrets in `.env.local`. Test webhooks in sandbox mode before activating live payments.
 
-## Cloudinary Production Notes
+## S3 + CloudFront Production Notes
 
-- Set `STORAGE_PROVIDER=cloudinary`.
-- Keep `CLOUDINARY_API_SECRET` server-only.
+- Set `STORAGE_PROVIDER=s3`.
+- Keep `S3_SECRET_ACCESS_KEY` server-only.
 - Test signed upload from `/wardrobe/add`.
 - Test image preview on `/wardrobe` and `/wardrobe/[id]`.
-- Test delete helper later as part of storage hardening.
-- Do not show raw Cloudinary errors or storage internals in customer UI.
+- Confirm CloudFront can read uploaded S3 objects.
+- Do not show raw S3 errors, signed URLs, or storage internals in customer UI.
 
 ## AI Tagging Production Notes
 
 - `AI_TAGGING_PROVIDER=mock` is safe for launch preparation.
-- Switch to `gemini`, `openai`, or `cloudinary` only after provider testing.
+- Switch to `gemini` or `openai` only after provider testing.
 - User review must remain required.
 - Suggested tags must not auto-save without confirmation.
 
@@ -278,7 +278,7 @@ If Nginx config is the issue, restore the previous `/etc/nginx/conf.d/fitpick.co
 - Live Paystack activation remains.
 - Webhook sandbox and live verification remain.
 - Production MongoDB security review remains.
-- Production Cloudinary signed delivery hardening remains.
+- Production S3/CloudFront delivery hardening remains.
 - Production AI provider selection and tuning remain.
 - Push notification delivery remains.
 - App-store packaging remains.

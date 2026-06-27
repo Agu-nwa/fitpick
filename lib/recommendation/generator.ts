@@ -17,37 +17,40 @@ export function generateCombinations(
       .slice(0, 5); // Prevent combinational explosion
   });
 
-  const tops = categoryMap["tops"] || [];
-  const bottoms = categoryMap["bottoms"] || [];
-  const shoes = categoryMap["shoes"] || [];
+  const byCategory = (category: string) => categoryMap[category] || [];
 
   const outfits: any[] = [];
 
-  for (const top of tops) {
-    for (const bottom of bottoms) {
-      for (const shoe of shoes) {
-        const items = [top, bottom, shoe];
-        let score =
-          scoreOutfit(
-            items,
-            scoringInput
-          );
+  function pushOutfit(items: any[]) {
+    const uniqueItems = items.filter(Boolean).filter((item, index, all) => all.findIndex((candidate) => String(candidate._id) === String(item._id)) === index);
+    if (!uniqueItems.length) return;
 
-        for (const item of items) {
-          score += calculateWeatherScore(
-            item,
-            scoringInput.weather || null
-          );
+    let score = scoreOutfit(uniqueItems, scoringInput);
 
-          score += calculatePreferenceBoost(
-            item,
-            scoringInput.preferences
-          );
-        }
-        outfits.push({
-          items,
-          score
-        });
+    for (const item of uniqueItems) {
+      score += calculateWeatherScore(item, scoringInput.weather || null);
+      score += calculatePreferenceBoost(item, scoringInput.preferences);
+    }
+
+    outfits.push({ items: uniqueItems, score });
+  }
+
+  for (const native of byCategory("native")) {
+    for (const shoe of byCategory("shoes").length ? byCategory("shoes") : [null]) {
+      pushOutfit([native, shoe, byCategory("accessories")[0]]);
+    }
+  }
+
+  for (const dress of byCategory("dresses")) {
+    for (const shoe of byCategory("shoes").length ? byCategory("shoes") : [null]) {
+      pushOutfit([dress, shoe, byCategory("outerwear")[0], byCategory("accessories")[0]]);
+    }
+  }
+
+  for (const top of byCategory("tops")) {
+    for (const bottom of byCategory("bottoms").length ? byCategory("bottoms") : [null]) {
+      for (const shoe of byCategory("shoes").length ? byCategory("shoes") : [null]) {
+        pushOutfit([top, bottom, shoe, byCategory("outerwear")[0], byCategory("accessories")[0], byCategory("bags")[0]]);
       }
     }
   }

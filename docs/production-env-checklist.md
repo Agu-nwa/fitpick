@@ -30,20 +30,22 @@ Notes:
 - Restrict network access where possible.
 - Use a database user with only the permissions FitPick needs.
 
-## Cloudinary
+## S3 + CloudFront
 
 ```bash
-STORAGE_PROVIDER=cloudinary
-CLOUDINARY_CLOUD_NAME=
-CLOUDINARY_API_KEY=
-CLOUDINARY_API_SECRET=
+STORAGE_PROVIDER=s3
+S3_BUCKET=fitpick1
+S3_REGION=eu-north-1
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+S3_PUBLIC_BASE_URL=
 ```
 
 Notes:
 
-- `CLOUDINARY_API_SECRET` must remain server-only.
-- Test signed upload before public launch.
-- Customer UI should never show raw Cloudinary errors, public IDs, or provider internals.
+- `S3_SECRET_ACCESS_KEY` must remain server-only.
+- Test signed S3 upload before public launch.
+- Customer UI should never show raw S3 errors, signed URLs, access keys, or provider internals.
 
 ## AI Tagging
 
@@ -56,7 +58,7 @@ OPENAI_API_KEY=
 Allowed provider values:
 
 ```text
-mock | cloudinary | gemini | openai
+mock | gemini | openai
 ```
 
 Notes:

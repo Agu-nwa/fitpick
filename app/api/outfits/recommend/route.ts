@@ -26,12 +26,11 @@ import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { StylePreference } from "@/models/StylePreference";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { WornLook } from "@/models/WornLook";
+import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-profile/style-profile";
+import { getMemorySummary, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
 
 import { outfitRecommendationRequestSchema }
   from "@/schemas/outfit.schema";
-
-import { generateAiOutfit }
-  from "@/lib/ai/outfit-generator";
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
@@ -81,6 +80,8 @@ export async function POST(request: NextRequest) {
 
     const [
       preferences,
+      styleProfile,
+      memorySummary,
       wardrobeItems,
       wornLooks,
       occasion
@@ -88,6 +89,10 @@ export async function POST(request: NextRequest) {
       StylePreference.findOne({
         userId: auth.user._id
       }).lean(),
+
+      getOrCreateStyleProfile(auth.user._id),
+
+      getMemorySummary(auth.user._id),
 
       WardrobeItem.find({
         userId: auth.user._id,
@@ -145,97 +150,37 @@ export async function POST(request: NextRequest) {
       occasion?.name ||
       "Today";
 
-    // -----------------------------------
-    // AI OUTFIT GENERATION
-    // -----------------------------------
+    const built = buildRecommendation({
+      occasionName,
+      occasionGroup:
+        parsed.data.customOccasion?.group ||
+        occasion?.group,
 
-    let aiRecommendation: any = null;
-    let selectedItems: any[] = [];
+      weather: liveWeather,
 
-    try {
-      aiRecommendation =
-        await generateAiOutfit({
-          wardrobe: wardrobeItems,
-          occasion: occasionName,
-          weather:
-            parsed.data.weatherContext ||
-            "",
-          style:
-            parsed.data.styleDirection ||
-            ""
-        });
+      formality:
+        parsed.data.formality ||
+        parsed.data.customOccasion?.formality ||
+        occasion?.formality ||
+        preferences?.formality,
 
-      selectedItems =
-        wardrobeItems.filter((item: any) =>
-          aiRecommendation?.selectedItemIds?.includes(
-            String(item._id)
-          )
-        );
-    } catch (error) {
-      console.error(
-        "AI recommendation failed:",
-        error
-      );
-    }
+      weatherContext:
+        liveWeather
+          ? `${liveWeather.city} • ${liveWeather.temperature}°C • ${liveWeather.condition}`
+          : parsed.data.weatherContext || "",
 
-    // -----------------------------------
-    // FALLBACK TO RULE ENGINE
-    // -----------------------------------
+      allowNeedsCare:
+        parsed.data.allowNeedsCare,
 
-    const built =
-      selectedItems.length > 0
-        ? {
-          title: `${occasionName} outfit`,
-          occasion: occasionName,
-          confidence:
-            aiRecommendation?.confidence ||
-            "Strong match",
-          summary:
-            aiRecommendation?.summary ||
-            "AI generated outfit.",
-          items: selectedItems,
-          reasonChips: [
-            "AI selected"
-          ],
-          weatherContext:
-            parsed.data.weatherContext ||
-            "",
-          repetitionNote: "",
-          careNote: "",
-          colorNote: "",
-          swapGroups: []
-        }
-        : buildRecommendation({
-          occasionName,
-          occasionGroup:
-            parsed.data.customOccasion
-              ?.group ||
-            occasion?.group,
+      styleDirection:
+        parsed.data.styleDirection,
 
-          weather: liveWeather,
-
-          formality:
-            parsed.data.formality ||
-            parsed.data.customOccasion
-              ?.formality ||
-            occasion?.formality ||
-            preferences?.formality,
-
-          weatherContext:
-            liveWeather
-              ? `${liveWeather.city} • ${liveWeather.temperature}°C • ${liveWeather.condition}`
-              : parsed.data.weatherContext || "",
-
-          allowNeedsCare:
-            parsed.data.allowNeedsCare,
-
-          styleDirection:
-            parsed.data.styleDirection,
-
-          preferences,
-          wardrobeItems,
-          wornLooks
-        });
+      preferences,
+      styleProfile: serializeStyleProfile(styleProfile),
+      memorySummary: serializeMemorySummary(memorySummary),
+      wardrobeItems,
+      wornLooks
+    });
 
     const recommendation =
       await OutfitRecommendation.create({
@@ -269,13 +214,34 @@ export async function POST(request: NextRequest) {
         colorNote:
           built.colorNote,
 
+        occasionFit:
+          built.occasionFit,
+
+        whyItWorks:
+          built.whyItWorks,
+
+        materialNote:
+          built.materialNote,
+
+        silhouetteNote:
+          built.silhouetteNote,
+
+        improvementNote:
+          built.improvementNote,
+
+        addLater:
+          built.addLater,
+
+        stylingTips:
+          built.stylingTips,
+
+        confidenceScore:
+          built.confidenceScore,
+
         swapGroups:
           built.swapGroups,
 
-        source:
-          selectedItems.length > 0
-            ? "ai"
-            : "rule_based"
+        source: "rule_based"
       });
 
     await recordAuditEvent({

@@ -35,6 +35,16 @@ npm run check:routes
 npm run build
 ```
 
+## Production storage and deployment
+
+FitPick now uses S3 for active image storage and CloudFront for public image delivery. See:
+
+- `docs/deployment/s3-cloudfront.md`
+- `docs/deployment/iam-s3-fitpick-policy.json`
+- `docs/deployment/ec2-pm2-production.md`
+
+Rotate any AWS key that has been shared in chat, logs, screenshots, or documents.
+
 ## Main routes
 
 - `/onboarding`

@@ -136,7 +136,7 @@ TEST_USER_EMAIL=qa@example.com TEST_USER_PASSWORD='change-me' TEST_USER_NAME='QA
 - No raw backend errors.
 - No stack traces.
 - No storage keys in normal UI.
-- No Cloudinary, AI, Stripe, or Paystack secrets exposed.
+- No S3, AI, Stripe, or Paystack secrets exposed.
 - No push tokens exposed.
 - No body-critical or appearance-shaming language.
 

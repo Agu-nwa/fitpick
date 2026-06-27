@@ -17,6 +17,52 @@ type RouteContext = {
   };
 };
 
+function normalizeList(values?: string[]) {
+  return (values || []).map((value) => value.trim()).filter(Boolean).slice(0, 20);
+}
+
+function buildConfirmedAnalysis(aiAnalysis: any, verifiedFields: Record<string, any> = {}) {
+  if (!aiAnalysis?.fields) return null;
+
+  const confirmedFields = Object.fromEntries(
+    Object.entries(aiAnalysis.fields).map(([key, field]: [string, any]) => {
+      const verified = verifiedFields[key];
+      if (!verified) return [key, field];
+
+      return [
+        key,
+        {
+          ...field,
+          value: verified.value,
+          originalConfidence: field?.confidence ?? verified.originalConfidence ?? 0,
+          confidence: 1,
+          source: "user_confirmed"
+        }
+      ];
+    })
+  );
+
+  return {
+    ...aiAnalysis,
+    status: "confirmed",
+    fields: confirmedFields
+  };
+}
+
+function verifiedMetadata(verifiedFields: Record<string, any> = {}) {
+  return Object.fromEntries(
+    Object.entries(verifiedFields).map(([key, field]: [string, any]) => [
+      key,
+      {
+        value: field.value,
+        confidence: 1,
+        originalConfidence: field.originalConfidence ?? field.confidence ?? 0,
+        source: "user_confirmed"
+      }
+    ])
+  );
+}
+
 export async function POST(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
   const limited = rateLimitPlaceholder({ key: `wardrobe-upload-review:${meta.ip}`, limit: 30, windowMs: 60 * 1000 });
@@ -36,19 +82,32 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return apiError("CONFLICT", "This upload has already been added to your wardrobe.");
     }
 
+    const verifiedFields = parsed.data.verifiedFields || {};
     const condition = inferCondition(parsed.data);
     const item = await WardrobeItem.create({
-      ...parsed.data,
+      name: parsed.data.name,
+      category: parsed.data.category,
+      subcategory: parsed.data.subcategory || "",
+      color: parsed.data.color,
+      pattern: parsed.data.pattern || "",
+      fabric: parsed.data.fabric || "",
+      fit: parsed.data.fit || "",
+      formality: normalizeList(parsed.data.formality),
+      occasions: normalizeList(parsed.data.occasions),
+      weather: normalizeList(parsed.data.weather),
       condition,
       userId: auth.user._id,
       storageKey: upload.storageKey,
       imageUrl: upload.imageUrl || "",
-      thumbnailUrl: upload.thumbnailUrl || ""
+      thumbnailUrl: upload.thumbnailUrl || "",
+      images: upload.images || {},
+      verifiedMetadata: verifiedMetadata(verifiedFields),
+      aiAnalysis: buildConfirmedAnalysis(upload.aiAnalysis, verifiedFields)
     });
 
     upload.createdItemId = item._id;
     upload.reviewedAt = new Date();
-    upload.aiTagStatus = "reviewed";
+    upload.aiTagStatus = "completed";
     await upload.save();
 
     await recordAuditEvent({

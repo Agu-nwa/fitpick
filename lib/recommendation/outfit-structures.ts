@@ -9,12 +9,14 @@ export type OccasionGroup =
 
 export function inferOccasionGroup(input: { name?: string; group?: string; weatherContext?: string }) {
   const name = `${input.name || ""} ${input.group || ""} ${input.weatherContext || ""}`.toLowerCase();
-  if (name.includes("native") || name.includes("traditional") || name.includes("owambe") || name.includes("church")) return "cultural";
-  if (name.includes("rain") || name.includes("hot") || name.includes("weather")) return "weather";
-  if (name.includes("travel")) return "travel";
-  if (name.includes("work") || name.includes("office") || name.includes("meeting")) return "work";
-  if (name.includes("formal") || name.includes("wedding") || name.includes("interview")) return "formal";
-  if (name.includes("date") || name.includes("hangout") || name.includes("social")) return "social";
+  if (/(native|traditional|owambe|aso-ebi|aso ebi|cultural|agbada|kaftan|ankara|isiagu)/.test(name)) return "cultural";
+  if (/(church|wedding)/.test(name)) return "formal";
+  if (/(rain|hot|cold|weather|harmattan)/.test(name)) return "weather";
+  if (/(travel|vacation|airport|beach|resort)/.test(name)) return "travel";
+  if (/(work|office|meeting|business casual|business)/.test(name)) return "work";
+  if (/(formal|interview|gala|black tie)/.test(name)) return "formal";
+  if (/(date|date night|dinner|hangout|social|smart casual)/.test(name)) return "social";
+  if (/(streetwear|weekend|casual)/.test(name)) return "everyday";
   return "everyday";
 }
 
@@ -33,4 +35,9 @@ export function structureFor(group: OccasionGroup) {
     default:
       return ["tops", "bottoms", "shoes", "accessories"];
   }
+}
+
+export function missingCoreCategories(items: any[], desiredCategories: string[]) {
+  const present = new Set(items.map((item) => item.category));
+  return desiredCategories.filter((category) => !["outerwear", "accessories", "bags"].includes(category) && !present.has(category));
 }

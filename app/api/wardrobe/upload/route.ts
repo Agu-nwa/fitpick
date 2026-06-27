@@ -13,7 +13,7 @@ import { uploadMetadataSchema } from "@/schemas/wardrobe.schema";
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `wardrobe-upload:${meta.ip}`, limit: 20, windowMs: 60 * 1000 });
+  const limited = rateLimitPlaceholder({ key: `wardrobe-upload:${meta.ip}`, limit: 20, windowMs: 60 * 1000, operation: "wardrobe-upload" });
   if (limited) return limited;
 
   try {
@@ -33,6 +33,18 @@ export async function POST(request: NextRequest) {
       });
     const imageUrl = parsed.data.secureUrl || parsed.data.imageUrl || "";
     const thumbnailUrl = parsed.data.thumbnailUrl || imageUrl;
+    const images = parsed.data.images || (imageUrl
+      ? {
+          front: {
+            url: imageUrl,
+            storageKey,
+            provider: parsed.data.provider || storage.provider,
+            uploadedAt: new Date().toISOString(),
+            purpose: "front"
+          },
+          additional: []
+        }
+      : { additional: [] });
 
     const upload = await WardrobeUpload.create({
       userId: auth.user._id,
@@ -45,6 +57,7 @@ export async function POST(request: NextRequest) {
       provider: parsed.data.provider || storage.provider,
       imageUrl,
       thumbnailUrl,
+      images,
       uploadStatus: parsed.data.uploadStatus || (imageUrl ? "uploaded" : storage.ready ? "pending" : "uploaded"),
       aiTagStatus: parsed.data.suggestedTags ? "suggested" : "not_started",
       suggestedTags: parsed.data.suggestedTags || {}

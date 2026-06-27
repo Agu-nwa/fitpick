@@ -30,11 +30,14 @@ export function serializeWardrobeItem(item: any) {
     formality: item.formality || [],
     occasions: item.occasions || [],
     weather: item.weather || [],
+    verifiedMetadata: item.verifiedMetadata || {},
     condition: item.condition,
     lastWornAt: item.lastWornAt ? new Date(item.lastWornAt).toISOString() : null,
     archivedAt: item.archivedAt ? new Date(item.archivedAt).toISOString() : null,
     imageUrl: item.imageUrl || "",
     thumbnailUrl: item.thumbnailUrl || "",
+    images: item.images || {},
+    aiAnalysis: item.aiAnalysis || null,
     hasImage: Boolean(item.storageKey || item.thumbnailUrl)
   };
 }
@@ -54,6 +57,8 @@ export function serializeWardrobeUpload(upload: any) {
     aiErrorSafeMessage: upload.aiErrorSafeMessage || "",
     imageUrl: upload.imageUrl || "",
     thumbnailUrl: upload.thumbnailUrl || "",
+    images: upload.images || {},
+    aiAnalysis: upload.aiAnalysis || null,
     suggestedTags: upload.suggestedTags || {},
     reviewedAt: upload.reviewedAt ? new Date(upload.reviewedAt).toISOString() : null,
     createdItemId: upload.createdItemId ? String(upload.createdItemId) : null

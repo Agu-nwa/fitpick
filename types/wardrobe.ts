@@ -21,12 +21,15 @@ export type WardrobeItem = {
   formality: string[];
   occasions: string[];
   weather: string[];
+  verifiedMetadata?: Record<string, unknown>;
   condition: WardrobeCondition;
   lastWorn?: string;
   lastWornAt?: string | null;
   archivedAt?: string | null;
   imageUrl?: string;
   thumbnailUrl?: string;
+  images?: Record<string, unknown>;
+  aiAnalysis?: unknown;
   hasImage?: boolean;
   imageTone?: string;
 };

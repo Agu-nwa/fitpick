@@ -12,9 +12,29 @@ export type OutfitRecommendation = {
   summary: string;
   weatherFit: string;
   colorNote: string;
+  occasionFit?: string;
+  whyItWorks?: string;
+  materialNote?: string;
+  silhouetteNote?: string;
+  improvementNote?: string;
+  addLater?: string;
+  confidenceScore?: number;
+  stylingTips?: string[];
   repeatNote: string;
   careNote: string;
   createdAt?: string;
+  preview?: {
+    status: "not_started" | "generating" | "ready" | "failed" | string;
+    provider?: string;
+    storageKey?: string;
+    imageUrl?: string;
+    cacheKey?: string;
+    promptVersion?: string;
+    model?: string;
+    generatedAt?: string | null;
+    errorMessage?: string;
+    attempts?: number;
+  };
   swapGroups?: Array<{
     category: string;
     itemIds: string[];
@@ -27,3 +47,29 @@ export type WornLook = OutfitRecommendation & {
 };
 
 export type OutfitRating = "Perfect" | "Good" | "Okay" | "Not today" | "Not my style";
+
+export type StylistIntent =
+  | "outfit_request"
+  | "compare_outfits"
+  | "improve_outfit"
+  | "explain_item"
+  | "packing_help"
+  | "wardrobe_gap"
+  | "general_style_advice"
+  | "shopping_advice_requested"
+  | "unclear";
+
+export type StylistResponse = {
+  message: string;
+  intent: StylistIntent;
+  recommendedOutfitIds: string[];
+  recommendedItemIds: string[];
+  alternativeItemIds: string[];
+  missingWardrobeCategories: string[];
+  occasionDetected: string | null;
+  confidenceScore: number;
+  stylingTips: string[];
+  followUpQuestions: string[];
+  addLaterSuggestions: string[];
+  safetyWarnings: string[];
+};

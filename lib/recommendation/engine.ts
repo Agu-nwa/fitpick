@@ -1,7 +1,13 @@
 import { colorCompatibilityScore, colorNote } from "@/lib/recommendation/color";
-import { inferOccasionGroup, structureFor } from "@/lib/recommendation/outfit-structures";
+import { inferOccasionGroup, missingCoreCategories, structureFor } from "@/lib/recommendation/outfit-structures";
 import { buildReasonChips } from "@/lib/recommendation/reason-chips";
-import { scoreOutfit } from "@/lib/recommendation/scoring";
+import {
+  fabricCompatibilityScore,
+  metadataList,
+  metadataValue,
+  scoreOutfit,
+  silhouetteBalanceScore
+} from "@/lib/recommendation/scoring";
 import { generateCombinations } from "@/lib/recommendation/generator";
 import { serializeWardrobeItem } from "@/lib/wardrobe";
 
@@ -44,6 +50,80 @@ function isWeatherAware(items: any[], weatherContext = "") {
   );
 }
 
+function itemLabel(item: any) {
+  return item.name || [item.color, item.subcategory || item.category].filter(Boolean).join(" ") || item.category;
+}
+
+function hasCulturalSignal(items: any[]) {
+  return items.some((item) =>
+    [
+      item.category,
+      item.subcategory,
+      metadataValue(item, "garmentType"),
+      metadataValue(item, "culturalTraditionalRelevance"),
+      metadataValue(item, "pattern"),
+      metadataValue(item, "fabricEstimate")
+    ]
+      .join(" ")
+      .toLowerCase()
+      .match(/native|traditional|agbada|kaftan|isiagu|ankara|aso-oke|aso ebi|lace|senator/)
+  );
+}
+
+function confidenceFromScore(score: number) {
+  if (score >= 185) return "Strong match";
+  if (score >= 115) return "Good match";
+  return "Needs review";
+}
+
+function boundedConfidenceScore(score: number) {
+  return Math.max(0, Math.min(1, Math.round((score / 220) * 100) / 100));
+}
+
+function buildFashionExplanation(input: {
+  items: any[];
+  occasion: string;
+  occasionGroup: string;
+  weatherContext?: string;
+  missing: string[];
+  score: number;
+}) {
+  const itemNames = input.items.map(itemLabel);
+  const fabrics = input.items
+    .map((item) => metadataValue(item, "fabricComposition") || metadataValue(item, "fabricEstimate") || item.fabric)
+    .filter(Boolean);
+  const silhouettes = input.items
+    .map((item) => metadataValue(item, "silhouette") || item.fit)
+    .filter(Boolean);
+  const cultural = hasCulturalSignal(input.items);
+  const missingText = input.missing.length ? ` Missing ${input.missing.join(", ")} keeps this from being fully complete.` : "";
+
+  return {
+    occasionFit:
+      input.occasionGroup === "cultural" || cultural
+        ? "Grounded in owned native or culturally relevant wardrobe pieces where available."
+        : `Built from owned wardrobe pieces for ${input.occasion}.`,
+    whyItWorks: `${itemNames.join(", ")} create a wearable ${input.occasion.toLowerCase()} look from actual wardrobe items.${missingText}`,
+    materialNote: fabrics.length
+      ? `Material read: ${fabrics.slice(0, 3).join(", ")}. Compatibility score ${fabricCompatibilityScore(input.items)}.`
+      : "Fabric data is limited, so FitPick used category and occasion fallback logic.",
+    silhouetteNote: silhouettes.length
+      ? `Silhouette read: ${silhouettes.slice(0, 3).join(", ")}. Balance score ${silhouetteBalanceScore(input.items)}.`
+      : "Silhouette data is limited, so FitPick avoided overclaiming fit balance.",
+    improvementNote: input.missing.length
+      ? `This outfit would improve with owned ${input.missing.join(" and ")} options.`
+      : "No major wardrobe gap detected for this recommendation.",
+    addLater: input.missing.length
+      ? `Optional add later: a versatile ${input.missing[0]} that matches your wardrobe.`
+      : "",
+    stylingTips: [
+      input.occasionGroup === "formal" ? "Keep grooming and footwear polished for the event." : "Keep proportions clean and intentional.",
+      cultural ? "Let the traditional piece lead; keep supporting items restrained." : "Use accessories only if they support the outfit, not compete with it.",
+      input.weatherContext ? "Check weather before leaving and swap outerwear if needed." : "Review weather before wearing."
+    ]
+  };
+}
+
 export type EngineInput = {
   occasionName?: string;
   occasionGroup?: string;
@@ -52,6 +132,8 @@ export type EngineInput = {
   allowNeedsCare?: boolean;
   styleDirection?: string;
   preferences?: any;
+  styleProfile?: any;
+  memorySummary?: any;
   wardrobeItems: any[];
   previousLooks?: any[];
   wornLooks?: any[];
@@ -62,6 +144,7 @@ export function buildRecommendation(input: EngineInput) {
   const repeatDays = repeatWindowDays(
     input.preferences?.repeatSensitivity
   );
+  const allowRecentRepeat = /repeat|again|same look|rewear/i.test(`${input.occasionName || ""} ${input.styleDirection || ""}`);
 
   const occasionGroup = inferOccasionGroup({
     name: input.occasionName,
@@ -94,6 +177,8 @@ export function buildRecommendation(input: EngineInput) {
 
   // Generate and score outfit combinations
 
+  const missing = missingCoreCategories(readyFirst, desiredStructure);
+
   const combinations = generateCombinations(
     readyFirst,
     desiredStructure,
@@ -101,8 +186,13 @@ export function buildRecommendation(input: EngineInput) {
       occasionName: input.occasionName,
       formality: input.formality,
       weatherContext: input.weatherContext,
+      seasonContext: input.weatherContext,
       repeatDays,
       allowNeedsCare: input.allowNeedsCare,
+      desiredCategories: desiredStructure,
+      styleProfile: input.styleProfile,
+      memorySummary: input.memorySummary,
+      allowRecentRepeat,
       previousLooks: input.previousLooks || []
     }
   );
@@ -124,7 +214,15 @@ export function buildRecommendation(input: EngineInput) {
       repetitionNote: "",
       careNote: "",
       colorNote: "",
-      swapGroups: []
+      swapGroups: [],
+      occasionFit: "No suitable owned wardrobe combination was found.",
+      whyItWorks: "FitPick could not assemble a complete look from the currently available owned items.",
+      materialNote: "",
+      silhouetteNote: "",
+      improvementNote: missing.length ? `Add or verify ${missing.join(", ")} items to unlock stronger recommendations.` : "Add more verified wardrobe metadata.",
+      addLater: missing.length ? `Optional add later: ${missing[0]}.` : "",
+      confidenceScore: 0,
+      stylingTips: ["Add more verified wardrobe items, then request this occasion again."]
     };
   }
 
@@ -132,16 +230,16 @@ export function buildRecommendation(input: EngineInput) {
     occasionName: input.occasionName,
     formality: input.formality,
     weatherContext: input.weatherContext,
+    seasonContext: input.weatherContext,
     repeatDays,
-    allowNeedsCare: input.allowNeedsCare
+    allowNeedsCare: input.allowNeedsCare,
+    desiredCategories: desiredStructure,
+    styleProfile: input.styleProfile,
+    memorySummary: input.memorySummary,
+    allowRecentRepeat
   });
 
-  const confidence =
-    score >= 145
-      ? "Strong match"
-      : score >= 95
-        ? "Good match"
-        : "Needs review";
+  const confidence = confidenceFromScore(score);
 
 
   const chips = buildReasonChips({
@@ -182,13 +280,30 @@ export function buildRecommendation(input: EngineInput) {
   });
 
   const occasion = input.occasionName || "Today";
+  const explanation = buildFashionExplanation({
+    items: coreItems,
+    occasion,
+    occasionGroup,
+    weatherContext: input.weatherContext,
+    missing,
+    score
+  });
+  const styleProfileNote = input.styleProfile
+    ? ` Style DNA considered: ${[
+        input.styleProfile.fashionRiskLevel ? `${input.styleProfile.fashionRiskLevel} risk` : "",
+        input.styleProfile.comfortPriority ? `${input.styleProfile.comfortPriority} comfort` : "",
+        input.styleProfile.favoriteColors?.length ? `colors ${input.styleProfile.favoriteColors.slice(0, 3).join(", ")}` : ""
+      ].filter(Boolean).join("; ")}.`
+    : "";
+  const memoryNote = input.memorySummary?.eventCount
+    ? ` Fashion Memory considered: recent likes, saves, rejections, and worn items were used gently.`
+    : "";
 
   return {
     title: `${occasion} outfit`,
     occasion,
     confidence,
-    summary: `A ${confidence.toLowerCase()} outfit built from ${coreItems.length} wardrobe item${coreItems.length === 1 ? "" : "s"
-      }.`,
+    summary: `${explanation.whyItWorks}${styleProfileNote}${memoryNote} Confidence ${Math.round(boundedConfidenceScore(score) * 100)}%.`,
     items: coreItems,
     reasonChips: chips,
     weatherContext: input.weatherContext || "",
@@ -198,10 +313,9 @@ export function buildRecommendation(input: EngineInput) {
     ),
     careNote: careNote(coreItems),
     colorNote: colorNote(coreItems),
-    swapGroups: buildSwapGroups(
-      coreItems,
-      available
-    )
+    swapGroups: buildSwapGroups(coreItems, available),
+    confidenceScore: boundedConfidenceScore(score),
+    ...explanation
   };
 }
 
@@ -262,6 +376,26 @@ export function serializeOutfit(
     weatherFit:
       outfit.weatherContext ||
       "No weather context provided.",
+    occasionFit: outfit.occasionFit || "",
+    whyItWorks: outfit.whyItWorks || outfit.summary || "",
+    materialNote: outfit.materialNote || "",
+    silhouetteNote: outfit.silhouetteNote || "",
+    improvementNote: outfit.improvementNote || "",
+    addLater: outfit.addLater || "",
+    confidenceScore: outfit.confidenceScore || 0,
+    stylingTips: outfit.stylingTips || [],
+    preview: outfit.preview || {
+      status: "not_started",
+      provider: "",
+      storageKey: "",
+      imageUrl: "",
+      cacheKey: "",
+      promptVersion: "",
+      model: "",
+      generatedAt: null,
+      errorMessage: "",
+      attempts: 0
+    },
     colorNote:
       outfit.colorNote || colorNote(items),
     repeatNote:
