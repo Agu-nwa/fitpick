@@ -6,6 +6,11 @@ Supported v1 jobs:
 
 - `outfit_preview_generation`
 - `wardrobe_analysis`
+- `label_ocr`
+- `avatar_preview_generation`
+- `garment_background_processing`
+- `style_profile_learning`
+- `memory_rollup`
 
 The current queue is MongoDB-backed and shaped so AWS SQS can replace it later.
 
@@ -26,10 +31,10 @@ Runs the worker with file watching for local development.
 ## EC2 + PM2
 
 ```bash
-pm2 start npm --name fitpick-worker -- run worker
+pm2 startOrRestart ecosystem.config.js --only fitpick-worker --update-env
 ```
 
-Starts the worker as a separate PM2 process.
+Starts or restarts the worker as a separate PM2 process.
 
 ```bash
 pm2 restart fitpick-worker --update-env

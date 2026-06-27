@@ -15,16 +15,16 @@ npm install
 Installs dependencies exactly from `package-lock.json`.
 
 ```bash
-npm run build
+npm run build:ec2
 ```
 
-Builds the Next.js production bundle and catches TypeScript/build issues before restart.
+Builds the Next.js production bundle with a larger Node heap for small EC2 instances and catches TypeScript/build issues before restart.
 
 ```bash
-pm2 restart fitpick --update-env
+pm2 startOrRestart ecosystem.config.js --update-env
 ```
 
-Restarts the FitPick PM2 process and reloads updated environment variables.
+Starts or restarts both the FitPick web process and the background worker, then reloads updated environment variables.
 
 ```bash
 pm2 status
@@ -34,9 +34,10 @@ Shows process health, uptime, restart count, and memory usage.
 
 ```bash
 pm2 logs fitpick --lines 100
+pm2 logs fitpick-worker --lines 100
 ```
 
-Shows the latest application logs for deployment verification.
+Shows the latest application and worker logs for deployment verification.
 
 ```bash
 pm2 save
@@ -52,8 +53,8 @@ If a deployment fails after `git pull`, identify the previous good commit and re
 git log --oneline -5
 git checkout <previous-good-commit>
 npm install
-npm run build
-pm2 restart fitpick --update-env
+npm run build:ec2
+pm2 startOrRestart ecosystem.config.js --update-env
 pm2 save
 ```
 

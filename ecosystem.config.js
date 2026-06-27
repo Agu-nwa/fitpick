@@ -7,6 +7,15 @@ module.exports = {
       env: {
         NODE_ENV: "production"
       }
+    },
+    {
+      name: "fitpick-worker",
+      script: "npm",
+      args: "run worker",
+      env: {
+        NODE_ENV: "production"
+      },
+      max_memory_restart: "512M"
     }
   ]
 };

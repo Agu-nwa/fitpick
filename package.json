@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:ec2": "NODE_OPTIONS=--max-old-space-size=2048 next build",
     "start": "next start",
     "worker": "tsx workers/fitpick-worker.ts",
     "worker:dev": "tsx watch workers/fitpick-worker.ts",
