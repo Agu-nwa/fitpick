@@ -217,7 +217,8 @@ export async function POST(request: NextRequest) {
       visualMode: visualization.visualMode,
       outfitRecommendationId: visualization.outfitRecommendationId,
       avatarPreview: visualization.avatarPreview,
-      visualizationDisclaimer: visualization.visualizationDisclaimer
+      visualizationDisclaimer: visualization.visualizationDisclaimer,
+      fitLock: visualization.fitLock
     };
 
     return apiSuccess({

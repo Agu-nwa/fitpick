@@ -1,7 +1,9 @@
 import { suggestWardrobeTags } from "@/lib/ai/tagging";
 import { runAvatarPreviewGenerationJob, serializeAvatarPreview } from "@/lib/avatar/avatar-preview";
+import { createGarmentAssetsForItemId, serializeGarmentAsset } from "@/lib/garment-assets/garment-assets";
 import { processWardrobeImageVariant, serializeProcessedImageVariants } from "@/lib/image-processing/background-removal";
 import { runOutfitPreviewGenerationJob, serializeOutfitPreview } from "@/lib/outfit-preview/outfit-preview";
+import { getTryOnProvider } from "@/lib/tryon/tryon-provider";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 
 export async function runWardrobeAnalysisJob(input: { userId: string; uploadId: string }) {
@@ -73,6 +75,19 @@ export async function runBackgroundJobByType(job: any) {
     };
   }
 
+  if (job.type === "fit_locked_preview_generation") {
+    const provider = getTryOnProvider("internal_preview");
+    return provider.generateTryOnPreview({
+      userId,
+      outfitRecommendationId: String(payload.outfitId || ""),
+      avatarProfileId: String(payload.avatarProfileId || ""),
+      wardrobeItemIds: Array.isArray(payload.wardrobeItemIds) ? payload.wardrobeItemIds.map(String) : [],
+      desiredView: payload.desiredView === "walking" || payload.desiredView === "360" || payload.desiredView === "side" || payload.desiredView === "back" ? payload.desiredView : "front",
+      accuracyLevelRequested: "fit_locked",
+      cacheKey: payload.cacheKey ? String(payload.cacheKey) : undefined
+    });
+  }
+
   if (job.type === "wardrobe_analysis") {
     return runWardrobeAnalysisJob({
       userId,
@@ -93,6 +108,26 @@ export async function runBackgroundJobByType(job: any) {
     );
 
     return serializeProcessedImageVariants(result);
+  }
+
+  if (job.type === "garment_asset_generation") {
+    const assets = await createGarmentAssetsForItemId(userId, String(payload.wardrobeItemId || ""));
+    return {
+      assets: assets.map((asset) => serializeGarmentAsset(asset)),
+      count: assets.length
+    };
+  }
+
+  if (job.type === "true_3d_tryon_generation") {
+    const provider = getTryOnProvider();
+    return provider.generateAnimatedAvatarTryOn({
+      userId,
+      outfitRecommendationId: String(payload.outfitId || ""),
+      avatarProfileId: String(payload.avatarProfileId || ""),
+      wardrobeItemIds: Array.isArray(payload.wardrobeItemIds) ? payload.wardrobeItemIds.map(String) : [],
+      desiredView: "360",
+      accuracyLevelRequested: "true_3d_simulation"
+    });
   }
 
   return {

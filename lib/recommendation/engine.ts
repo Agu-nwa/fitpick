@@ -393,6 +393,13 @@ export function serializeOutfit(
       cacheKey: "",
       promptVersion: "",
       model: "",
+      accuracyLevel: {
+        id: "inspired_visualization",
+        label: "AI Visualization",
+        meaning: "Looks inspired by selected items but may not match exact garment fit.",
+        rank: 1
+      },
+      fitWarnings: [],
       generatedAt: null,
       errorMessage: "",
       attempts: 0

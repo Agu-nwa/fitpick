@@ -130,6 +130,13 @@ export function analysisToSuggestedTags(analysis: WardrobeAiAnalysis): AiSuggest
     formality: fields.formalityScore.value ? [fields.formalityScore.value] : [],
     occasions: fields.occasionSuitability.value,
     weather: fields.weatherSuitability.value,
+    taggedSize: fields.taggedSize.value || "unknown",
+    sizeSystem: fields.sizeSystem.value || "unknown",
+    garmentFit: fields.garmentFit.value || "unknown",
+    stretchLevel: fields.stretchLevel.value || "unknown",
+    fabricDrape: fields.fabricDrape.value || "unknown",
+    fitConfidence: fields.fitConfidence.value ?? fields.fit.confidence ?? 0,
+    measurementSource: fields.measurementSource.value || (fields.size.source === "ocr" ? "label_ocr" : "ai_estimated"),
     confidence,
     needsReview: true
   };

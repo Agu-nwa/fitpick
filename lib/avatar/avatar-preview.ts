@@ -6,13 +6,15 @@ import { openai } from "@/lib/ai/openai";
 import { buildAvatarPreviewPrompt } from "@/lib/ai/prompts";
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { buildAvatarPromptContext, getOrCreateAvatarProfile, type PosePreset, type VisualizationStyle } from "@/lib/avatar/avatar-profile";
+import { buildFitLockPromptConstraints, evaluateOutfitFitOnAvatar } from "@/lib/fit/fit-lock";
+import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
 import { uploadGeneratedImage } from "@/lib/storage/generated-images";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { AvatarProfile } from "@/models/AvatarProfile";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { WardrobeItem } from "@/models/WardrobeItem";
 
-export const avatarPreviewPromptVersion = "fitpick-avatar-preview-v1";
+export const avatarPreviewPromptVersion = "fitpick-avatar-preview-v2";
 
 type AvatarPreviewOptions = {
   visualizationStyle?: VisualizationStyle;
@@ -40,6 +42,14 @@ function itemFingerprint(item: any) {
     pattern: item.pattern || "",
     fabric: item.fabric || "",
     fit: item.fit || "",
+    taggedSize: item.taggedSize || "unknown",
+    sizeSystem: item.sizeSystem || "unknown",
+    garmentFit: item.garmentFit || "unknown",
+    garmentMeasurements: item.garmentMeasurements || {},
+    stretchLevel: item.stretchLevel || "unknown",
+    fabricDrape: item.fabricDrape || "unknown",
+    fitConfidence: item.fitConfidence || 0,
+    measurementSource: item.measurementSource || "unknown",
     verifiedMetadata: item.verifiedMetadata || {}
   };
 }
@@ -57,7 +67,19 @@ function avatarFingerprint(profile: any, options: AvatarPreviewOptions = {}) {
     visualizationStyle: options.visualizationStyle || profile.visualizationStyle || "luxury",
     avatarProvider: profile.avatarProvider || "fitpick_preset",
     avatarUrl: profile.avatarUrl || null,
-    glbStorageKey: profile.glbStorageKey || null
+    glbStorageKey: profile.glbStorageKey || null,
+    heightCm: profile.heightCm || null,
+    chestCm: profile.chestCm || null,
+    bustCm: profile.bustCm || null,
+    waistCm: profile.waistCm || null,
+    hipsCm: profile.hipsCm || null,
+    shoulderWidthCm: profile.shoulderWidthCm || null,
+    inseamCm: profile.inseamCm || null,
+    armLengthCm: profile.armLengthCm || null,
+    shoeSize: profile.shoeSize || "",
+    bodyMeasurementSource: profile.bodyMeasurementSource || "unknown",
+    bodyMeasurementConfidence: profile.bodyMeasurementConfidence || 0,
+    bodyFitPreference: profile.bodyFitPreference || "regular"
   };
 }
 
@@ -71,7 +93,13 @@ function selectedItemDetails(items: any[]) {
         ["Pattern", metadataValue(item, "pattern") || item.pattern],
         ["Fabric estimate", metadataValue(item, "fabricEstimate") || item.fabric],
         ["Fabric composition", metadataValue(item, "fabricComposition")],
+        ["Tagged size", item.taggedSize || metadataValue(item, "taggedSize") || metadataValue(item, "size")],
+        ["Size system", item.sizeSystem || metadataValue(item, "sizeSystem")],
         ["Fit", metadataValue(item, "fit") || item.fit],
+        ["Garment fit", item.garmentFit || metadataValue(item, "garmentFit")],
+        ["Stretch", item.stretchLevel],
+        ["Fabric drape", item.fabricDrape],
+        ["Measurement source", item.measurementSource],
         ["Silhouette", metadataValue(item, "silhouette")],
         ["Texture", metadataValue(item, "texture")],
         ["Length", metadataValue(item, "length")],
@@ -176,10 +204,19 @@ export async function generateAvatarOutfitPreview(
   const startedAt = Date.now();
   const visualizationStyle = options.visualizationStyle || avatarProfile.visualizationStyle || "luxury";
   const posePreset = options.posePreset || avatarProfile.posePreset || "standing";
+  const fitEvaluation = evaluateOutfitFitOnAvatar(avatarProfile, items);
+  const fitLockConstraints = buildFitLockPromptConstraints({
+    avatarProfile,
+    outfitItems: items,
+    fitEvaluation
+  });
   const prompt = buildAvatarPreviewPrompt({
     outfitDescription: selectedItemDetails(items),
     occasion: sanitizeUserPrompt(outfit.occasion || "Today"),
     avatarContext: buildAvatarPromptContext({ ...avatarProfile.toObject?.(), ...avatarProfile, posePreset, visualizationStyle }),
+    fitLockConstraints,
+    previewAccuracyLabel: fitEvaluation.accuracyLevel.label,
+    fitWarnings: fitEvaluation.warnings,
     visualizationStyle
   });
 
@@ -212,6 +249,11 @@ export async function generateAvatarOutfitPreview(
       promptVersion: avatarPreviewPromptVersion,
       visualizationStyle,
       posePreset,
+      accuracyLevel: fitEvaluation.accuracyLevel.id,
+      fitStatus: fitEvaluation.fitStatus,
+      fitConfidence: fitEvaluation.fitConfidence,
+      fitWarnings: fitEvaluation.warnings,
+      fitLockInstructions: fitEvaluation.lockedFitInstructions,
       cacheKey: options.cacheKey || buildAvatarPreviewCacheKey(userId, String(outfit._id), items.map((item) => JSON.stringify(itemFingerprint(item))), avatarProfile, options)
     };
   } catch (error) {
@@ -265,6 +307,11 @@ export async function saveAvatarPreview(
         model: generatedImage.model,
         visualizationStyle: generatedImage.visualizationStyle,
         posePreset: generatedImage.posePreset,
+        accuracyLevel: generatedImage.accuracyLevel || "inspired_visualization",
+        fitStatus: generatedImage.fitStatus || "unknown",
+        fitConfidence: generatedImage.fitConfidence || 0,
+        fitWarnings: generatedImage.fitWarnings || [],
+        fitLockInstructions: generatedImage.fitLockInstructions || [],
         generatedAt: new Date(),
         format: uploaded.format,
         width: uploaded.width,
@@ -279,6 +326,7 @@ export async function saveAvatarPreview(
 }
 
 export function serializeAvatarPreview(preview: any) {
+  const accuracyLevel = getPreviewAccuracyLevel(preview?.accuracyLevel);
   return {
     id: preview?._id ? String(preview._id) : "",
     status: preview?.status || "not_started",
@@ -291,11 +339,16 @@ export function serializeAvatarPreview(preview: any) {
     model: preview?.model || "",
     visualizationStyle: preview?.visualizationStyle || "luxury",
     posePreset: preview?.posePreset || "standing",
+    accuracyLevel,
+    fitStatus: preview?.fitStatus || "unknown",
+    fitConfidence: typeof preview?.fitConfidence === "number" ? preview.fitConfidence : 0,
+    fitWarnings: preview?.fitWarnings || [],
+    fitLockInstructions: preview?.fitLockInstructions || [],
     generatedAt: preview?.generatedAt ? new Date(preview.generatedAt).toISOString() : null,
     errorMessage: preview?.errorMessage || "",
     attempts: preview?.attempts || 0,
     cached: Boolean(preview?.cached),
-    visualizationNote: "AI digital human visualization, not exact virtual try-on."
+    visualizationNote: `${accuracyLevel.label}: ${accuracyLevel.meaning} Not exact virtual try-on.`
   };
 }
 

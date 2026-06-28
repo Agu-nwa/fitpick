@@ -29,6 +29,9 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
         <Badge tone={tone}>{status}</Badge>
         {item.recognizedEntity ? <Badge tone="premium">{item.recognizedEntity}</Badge> : null}
         {item.category ? <Badge>{item.category}</Badge> : null}
+        {item.taggedSize && item.taggedSize !== "unknown" ? <Badge tone="info">Size {item.taggedSize}</Badge> : null}
+        {item.garmentFit && item.garmentFit !== "unknown" ? <Badge tone="neutral">{item.garmentFit} fit</Badge> : null}
+        {item.measurementSource && item.measurementSource !== "unknown" ? <Badge tone={item.measurementSource === "ai_estimated" ? "warning" : "success"}>{item.measurementSource.replace("_", " ")}</Badge> : null}
         {processingStatus === "processing" ? <Badge tone="info">Creating studio image</Badge> : null}
         {processingStatus === "unavailable" ? <Badge tone="warning">Studio image unavailable</Badge> : null}
       </div>

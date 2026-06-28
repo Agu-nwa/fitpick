@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import type { WardrobeCategory, WardrobeCondition, WardrobeItem } from "@/types/wardrobe";
+import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory, WardrobeCondition, WardrobeItem } from "@/types/wardrobe";
 
 export type WardrobeTagFormValues = {
   name?: string;
@@ -15,6 +15,14 @@ export type WardrobeTagFormValues = {
   formality: string[];
   occasions: string[];
   weather: string[];
+  taggedSize: TaggedSize;
+  sizeSystem: SizeSystem;
+  garmentFit: GarmentFit;
+  garmentMeasurements: GarmentMeasurements;
+  stretchLevel: StretchLevel;
+  fabricDrape: FabricDrape;
+  fitConfidence: number;
+  measurementSource: MeasurementSource;
   condition: WardrobeCondition;
 };
 
@@ -34,6 +42,13 @@ const conditionOptions: Array<{ value: WardrobeCondition; label: string }> = [
   { value: "needs-care", label: "Needs care" },
   { value: "missing-tags", label: "Needs more tags" }
 ];
+const taggedSizeOptions: TaggedSize[] = ["unknown", "XS", "S", "M", "L", "XL", "XXL", "custom"];
+const sizeSystemOptions: SizeSystem[] = ["unknown", "international", "US", "UK", "EU", "NG", "custom"];
+const garmentFitOptions: GarmentFit[] = ["unknown", "slim", "regular", "relaxed", "oversized", "tailored", "flowing"];
+const stretchOptions: StretchLevel[] = ["unknown", "none", "low", "medium", "high"];
+const drapeOptions: FabricDrape[] = ["unknown", "structured", "soft", "flowing", "heavy", "stiff"];
+const measurementSourceOptions: MeasurementSource[] = ["unknown", "label_ocr", "user_confirmed", "ai_estimated", "manual"];
+const measurementKeys: Array<keyof GarmentMeasurements> = ["chestWidthCm", "shoulderWidthCm", "sleeveLengthCm", "bodyLengthCm", "waistCm", "hipsCm", "inseamCm", "outseamCm"];
 
 const inputClass =
   "focus-ring min-h-11 w-full rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
@@ -61,8 +76,25 @@ function initialValues(item?: Partial<WardrobeItem>): WardrobeTagFormValues {
     formality: item?.formality || ["balanced"],
     occasions: item?.occasions || ["casual"],
     weather: item?.weather || ["dry"],
+    taggedSize: item?.taggedSize || "unknown",
+    sizeSystem: item?.sizeSystem || "unknown",
+    garmentFit: item?.garmentFit || "unknown",
+    garmentMeasurements: item?.garmentMeasurements || {},
+    stretchLevel: item?.stretchLevel || "unknown",
+    fabricDrape: item?.fabricDrape || "unknown",
+    fitConfidence: item?.fitConfidence || 0,
+    measurementSource: item?.measurementSource || "unknown",
     condition: item?.condition || "ready"
   };
+}
+
+function measurementState(measurements?: GarmentMeasurements) {
+  return Object.fromEntries(measurementKeys.map((key) => [key, measurements?.[key] == null ? "" : String(measurements[key])])) as Record<string, string>;
+}
+
+function measurementNumber(value: string) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= 0 ? Math.round(numeric * 10) / 10 : null;
 }
 
 export function WardrobeTagReviewForm({
@@ -89,6 +121,14 @@ export function WardrobeTagReviewForm({
   const [formality, setFormality] = useState(joinTags(defaults.formality));
   const [occasions, setOccasions] = useState(joinTags(defaults.occasions));
   const [weather, setWeather] = useState(joinTags(defaults.weather));
+  const [taggedSize, setTaggedSize] = useState<TaggedSize>(defaults.taggedSize);
+  const [sizeSystem, setSizeSystem] = useState<SizeSystem>(defaults.sizeSystem);
+  const [garmentFit, setGarmentFit] = useState<GarmentFit>(defaults.garmentFit);
+  const [stretchLevel, setStretchLevel] = useState<StretchLevel>(defaults.stretchLevel);
+  const [fabricDrape, setFabricDrape] = useState<FabricDrape>(defaults.fabricDrape);
+  const [measurementSource, setMeasurementSource] = useState<MeasurementSource>(defaults.measurementSource);
+  const [fitConfidence, setFitConfidence] = useState(String(defaults.fitConfidence));
+  const [garmentMeasurements, setGarmentMeasurements] = useState<Record<string, string>>(measurementState(defaults.garmentMeasurements));
   const [condition, setCondition] = useState<WardrobeCondition>(defaults.condition);
 
   useEffect(() => {
@@ -102,6 +142,14 @@ export function WardrobeTagReviewForm({
     setFormality(joinTags(defaults.formality));
     setOccasions(joinTags(defaults.occasions));
     setWeather(joinTags(defaults.weather));
+    setTaggedSize(defaults.taggedSize);
+    setSizeSystem(defaults.sizeSystem);
+    setGarmentFit(defaults.garmentFit);
+    setStretchLevel(defaults.stretchLevel);
+    setFabricDrape(defaults.fabricDrape);
+    setMeasurementSource(defaults.measurementSource);
+    setFitConfidence(String(defaults.fitConfidence));
+    setGarmentMeasurements(measurementState(defaults.garmentMeasurements));
     setCondition(defaults.condition);
   }, [defaults]);
 
@@ -121,6 +169,14 @@ export function WardrobeTagReviewForm({
           formality: splitTags(formality),
           occasions: splitTags(occasions),
           weather: splitTags(weather),
+          taggedSize,
+          sizeSystem,
+          garmentFit,
+          garmentMeasurements: Object.fromEntries(measurementKeys.map((key) => [key, measurementNumber(garmentMeasurements[key] || "")])),
+          stretchLevel,
+          fabricDrape,
+          fitConfidence: Math.max(0, Math.min(1, Number(fitConfidence) || 0)),
+          measurementSource,
           condition
         });
       }}
@@ -179,6 +235,61 @@ export function WardrobeTagReviewForm({
         Weather
         <input className={inputClass} value={weather} onChange={(event) => setWeather(event.target.value)} placeholder="dry, indoor" />
       </label>
+
+      <div className="rounded-2xl border border-line bg-white p-3">
+        <p className="text-sm font-semibold text-ink">Fit accuracy</p>
+        <p className="mt-1 text-xs leading-5 text-muted">Add measurements to improve try-on accuracy. Unknown values stay estimated.</p>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <label className="block text-xs font-semibold text-ink">
+            Tagged size
+            <select className={inputClass} value={taggedSize} onChange={(event) => setTaggedSize(event.target.value as TaggedSize)}>
+              {taggedSizeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+          <label className="block text-xs font-semibold text-ink">
+            Size system
+            <select className={inputClass} value={sizeSystem} onChange={(event) => setSizeSystem(event.target.value as SizeSystem)}>
+              {sizeSystemOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+          <label className="block text-xs font-semibold text-ink">
+            Garment fit
+            <select className={inputClass} value={garmentFit} onChange={(event) => setGarmentFit(event.target.value as GarmentFit)}>
+              {garmentFitOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+          <label className="block text-xs font-semibold text-ink">
+            Stretch
+            <select className={inputClass} value={stretchLevel} onChange={(event) => setStretchLevel(event.target.value as StretchLevel)}>
+              {stretchOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+          <label className="block text-xs font-semibold text-ink">
+            Drape
+            <select className={inputClass} value={fabricDrape} onChange={(event) => setFabricDrape(event.target.value as FabricDrape)}>
+              {drapeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+          <label className="block text-xs font-semibold text-ink">
+            Source
+            <select className={inputClass} value={measurementSource} onChange={(event) => setMeasurementSource(event.target.value as MeasurementSource)}>
+              {measurementSourceOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+          <label className="block text-xs font-semibold text-ink">
+            Fit confidence
+            <input type="number" min="0" max="1" step="0.05" className={inputClass} value={fitConfidence} onChange={(event) => setFitConfidence(event.target.value)} />
+          </label>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          {measurementKeys.map((key) => (
+            <label key={key} className="block text-xs font-semibold text-ink">
+              {key.replace("Cm", "").replace(/([A-Z])/g, " $1")} cm
+              <input type="number" min="0" step="0.1" className={inputClass} value={garmentMeasurements[key] || ""} onChange={(event) => setGarmentMeasurements((current) => ({ ...current, [key]: event.target.value }))} placeholder="Unknown" />
+            </label>
+          ))}
+        </div>
+      </div>
 
       <label className="block text-xs font-semibold text-ink">
         Readiness

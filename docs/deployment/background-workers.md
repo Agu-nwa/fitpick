@@ -9,10 +9,15 @@ Supported v1 jobs:
 - `label_ocr`
 - `avatar_preview_generation`
 - `garment_background_processing`
+- `garment_asset_generation`
+- `fit_locked_preview_generation`
+- `true_3d_tryon_generation`
 - `style_profile_learning`
 - `memory_rollup`
 
 The current queue is MongoDB-backed and shaped so AWS SQS can replace it later.
+
+`true_3d_tryon_generation` is integration-ready only. It returns provider unavailable until a real garment simulation provider or internal mesh pipeline is configured.
 
 ## Local Development
 

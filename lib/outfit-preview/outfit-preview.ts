@@ -4,6 +4,7 @@ import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
 import { openai } from "@/lib/ai/openai";
 import { buildImagePreviewPrompt } from "@/lib/ai/prompts";
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
+import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
 import { uploadGeneratedImage } from "@/lib/storage/generated-images";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { OutfitPreview } from "@/models/OutfitPreview";
@@ -149,6 +150,7 @@ export async function saveGeneratedPreview(userId: string, outfitId: string, gen
     cacheKey,
     promptVersion: generatedImage.promptVersion,
     model: generatedImage.model,
+    accuracyLevel: "garment_referenced",
     generatedAt: new Date(),
     errorMessage: "",
     lastAttemptAt: new Date()
@@ -174,6 +176,7 @@ export async function saveGeneratedPreview(userId: string, outfitId: string, gen
         status: "ready",
         promptVersion: generatedImage.promptVersion,
         model: generatedImage.model,
+        accuracyLevel: "garment_referenced",
         generatedAt: previewPatch.generatedAt,
         format: uploaded.format,
         width: uploaded.width,
@@ -188,6 +191,7 @@ export async function saveGeneratedPreview(userId: string, outfitId: string, gen
 }
 
 export function serializeOutfitPreview(preview: any) {
+  const accuracyLevel = getPreviewAccuracyLevel(preview?.accuracyLevel || "garment_referenced");
   return {
     id: preview?._id ? String(preview._id) : "",
     status: preview?.status || "not_started",
@@ -198,11 +202,13 @@ export function serializeOutfitPreview(preview: any) {
     cacheKey: preview?.cacheKey || "",
     promptVersion: preview?.promptVersion || "",
     model: preview?.model || "",
+    accuracyLevel,
+    fitWarnings: preview?.fitWarnings || [],
     generatedAt: preview?.generatedAt ? new Date(preview.generatedAt).toISOString() : null,
     errorMessage: preview?.errorMessage || "",
     attempts: preview?.attempts || 0,
     cached: Boolean(preview?.cached),
-    visualizationNote: "AI visualization only, not an exact virtual try-on."
+    visualizationNote: `${accuracyLevel.label}: ${accuracyLevel.meaning} Not an exact virtual try-on.`
   };
 }
 

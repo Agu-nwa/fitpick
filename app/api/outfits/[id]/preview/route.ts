@@ -166,6 +166,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         provider: "s3",
         promptVersion: previewPromptVersion,
         model: getAiModel("imageGeneration"),
+        accuracyLevel: "garment_referenced",
         errorMessage: "",
         lastAttemptAt: new Date()
       },
@@ -193,7 +194,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
             provider: "s3",
             cacheKey,
             promptVersion: previewPromptVersion,
-            model: getAiModel("imageGeneration")
+            model: getAiModel("imageGeneration"),
+            accuracyLevel: "garment_referenced"
           }),
           job: serializeJob(job)
         },

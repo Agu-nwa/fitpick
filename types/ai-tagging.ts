@@ -1,4 +1,4 @@
-import type { WardrobeCategory, WardrobeCondition } from "@/types/wardrobe";
+import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory, WardrobeCondition } from "@/types/wardrobe";
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 
 export type AiTaggingProvider = "mock" | "gemini" | "openai";
@@ -14,6 +14,14 @@ export type AiSuggestedWardrobeTags = {
   formality?: string[];
   occasions?: string[];
   weather?: string[];
+  taggedSize?: TaggedSize;
+  sizeSystem?: SizeSystem;
+  garmentFit?: GarmentFit;
+  garmentMeasurements?: GarmentMeasurements;
+  stretchLevel?: StretchLevel;
+  fabricDrape?: FabricDrape;
+  fitConfidence?: number;
+  measurementSource?: MeasurementSource;
   condition?: WardrobeCondition;
   confidence: number;
   needsReview: boolean;

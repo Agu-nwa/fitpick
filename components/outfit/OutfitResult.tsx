@@ -11,6 +11,7 @@ import { CTABar } from "@/components/ui/CTABar";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Toast } from "@/components/ui/Toast";
 import { OutfitCard } from "@/components/cards/OutfitCard";
+import { DigitalHumanTryOnPanel } from "@/components/avatar/DigitalHumanTryOnPanel";
 import { OutfitItemCard } from "@/components/outfit/OutfitItemCard";
 import { OutfitApiErrorState } from "@/components/outfit/OutfitIntegrationStates";
 import {
@@ -24,6 +25,7 @@ import {
   swapOutfitItem,
   wearOutfit
 } from "@/lib/api-client";
+import type { AvatarProfileData } from "@/lib/api-client";
 import type { OutfitRecommendation } from "@/types/outfit";
 import { OutfitPreview } from "@/components/outfit/OutfitPreview";
 
@@ -111,6 +113,7 @@ export function OutfitResult({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(outfit.preview?.imageUrl || "");
   const [previewStatus, setPreviewStatus] = useState(outfit.preview?.status || "not_started");
+  const [previewAccuracyLevel, setPreviewAccuracyLevel] = useState(outfit.preview?.accuracyLevel);
   const [previewError, setPreviewError] = useState("");
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [previewJobId, setPreviewJobId] = useState("");
@@ -120,7 +123,22 @@ export function OutfitResult({
   const [avatarPreviewError, setAvatarPreviewError] = useState("");
   const [isGeneratingAvatarPreview, setIsGeneratingAvatarPreview] = useState(false);
   const [avatarPreviewJobId, setAvatarPreviewJobId] = useState("");
+  const [avatarProfile, setAvatarProfile] = useState<AvatarProfileData["profile"] | null>(null);
+  const [avatarAccuracyLevel, setAvatarAccuracyLevel] = useState<any>();
+  const [avatarFitStatus, setAvatarFitStatus] = useState("");
+  const [avatarFitConfidence, setAvatarFitConfidence] = useState(0);
+  const [avatarFitWarnings, setAvatarFitWarnings] = useState<string[]>([]);
   const outfitItemIds = outfit.items.map((item) => item.id).filter(Boolean);
+
+  function applyAvatarPreview(preview: any, profile?: AvatarProfileData["profile"] | null) {
+    setAvatarPreviewStatus(preview.status || "not_started");
+    setAvatarPreviewUrl(preview.imageUrl || preview.previewUrl || "");
+    setAvatarAccuracyLevel(preview.accuracyLevel);
+    setAvatarFitStatus(preview.fitStatus || "");
+    setAvatarFitConfidence(typeof preview.fitConfidence === "number" ? preview.fitConfidence : 0);
+    setAvatarFitWarnings(Array.isArray(preview.fitWarnings) ? preview.fitWarnings : []);
+    if (profile !== undefined) setAvatarProfile(profile);
+  }
 
   useEffect(() => {
     if (!canSwap || !outfit.id) return;
@@ -130,8 +148,7 @@ export function OutfitResult({
       const result = await getAvatarPreview(outfit.id);
       if (cancelled || !result.ok) return;
       const preview = result.data.preview;
-      setAvatarPreviewStatus(preview.status || "not_started");
-      setAvatarPreviewUrl(preview.imageUrl || preview.previewUrl || "");
+      applyAvatarPreview(preview, result.data.avatarProfile || null);
     })();
 
     return () => {
@@ -238,6 +255,7 @@ export function OutfitResult({
       const preview = result.data.preview;
       setPreviewStatus(preview.status);
       setPreviewUrl(preview.imageUrl || preview.previewUrl || "");
+      setPreviewAccuracyLevel(preview.accuracyLevel);
       setPreviewJobId(result.data.job?.id || "");
       if (preview.imageUrl || preview.previewUrl) setPreviewOpen(true);
       if (result.data.job?.id && preview.status !== "ready") {
@@ -266,6 +284,7 @@ export function OutfitResult({
       if (job.status === "completed") {
         const preview = job.result?.preview || {};
         const url = preview.imageUrl || preview.previewUrl || "";
+        setPreviewAccuracyLevel(preview.accuracyLevel);
         if (url) {
           setPreviewUrl(url);
           setPreviewOpen(true);
@@ -299,8 +318,7 @@ export function OutfitResult({
 
     if (result.ok) {
       const preview = result.data.preview;
-      setAvatarPreviewStatus(preview.status);
-      setAvatarPreviewUrl(preview.imageUrl || preview.previewUrl || "");
+      applyAvatarPreview(preview, result.data.avatarProfile || null);
       setAvatarPreviewJobId(result.data.job?.id || "");
       if (preview.imageUrl || preview.previewUrl) setAvatarPreviewOpen(true);
       if (result.data.job?.id && preview.status !== "ready") {
@@ -329,6 +347,7 @@ export function OutfitResult({
       if (job.status === "completed") {
         const preview = job.result?.preview || {};
         const url = preview.imageUrl || preview.previewUrl || "";
+        applyAvatarPreview({ ...preview, status: "ready" });
         if (url) {
           setAvatarPreviewUrl(url);
           setAvatarPreviewOpen(true);
@@ -375,6 +394,7 @@ export function OutfitResult({
             <Badge tone={previewStatus === "ready" ? "success" : previewStatus === "failed" ? "danger" : "premium"}>
               {previewStatus === "ready" ? "Preview ready" : previewStatus === "failed" ? "Preview failed" : "AI visualization"}
             </Badge>
+            {previewAccuracyLevel ? <Badge tone="premium">{previewAccuracyLevel.label}</Badge> : null}
             <p className="text-xs leading-5 text-muted">Not an exact virtual try-on.</p>
           </div>
           {previewStatus === "queued" || previewStatus === "processing" || previewStatus === "generating" ? (
@@ -404,49 +424,26 @@ export function OutfitResult({
       </section>
 
       <section className="mt-7">
-        <SectionHeader title="Digital Human Preview" />
+        <SectionHeader title="Digital Human Try-On" />
 
-        <Card className="mt-4">
-          {avatarPreviewUrl ? (
-            <button
-              type="button"
-              className="focus-ring block w-full overflow-hidden rounded-2xl border border-line bg-canvas"
-              onClick={() => setAvatarPreviewOpen(true)}
-            >
-              <img src={avatarPreviewUrl} alt={`${outfit.title} Digital Human Preview`} className="aspect-square w-full object-cover" />
-            </button>
-          ) : (
-            <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-line bg-canvas px-5 text-center">
-              <p className="text-sm leading-6 text-muted">Generate an avatar outfit preview from this owned wardrobe look.</p>
-            </div>
-          )}
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Badge tone={avatarPreviewStatus === "ready" ? "success" : avatarPreviewStatus === "failed" ? "danger" : "premium"}>
-              {avatarPreviewStatus === "ready" ? "Avatar look ready" : avatarPreviewStatus === "failed" ? "Avatar look failed" : "Avatar Outfit Preview"}
-            </Badge>
-            <p className="text-xs leading-5 text-muted">AI visualization, not exact virtual try-on.</p>
-          </div>
-          {avatarPreviewStatus === "queued" || avatarPreviewStatus === "processing" || avatarPreviewStatus === "generating" ? (
-            <p className="mt-3 text-sm font-semibold text-cocoa">Your Digital Human Preview is being styled. This may take a moment.</p>
-          ) : null}
-          {avatarPreviewJobId ? <p className="mt-2 text-xs text-muted">Job queued: {avatarPreviewJobId.slice(-8)}</p> : null}
-          {avatarPreviewError ? <p className="mt-3 text-sm font-semibold text-red-600">{avatarPreviewError}</p> : null}
-
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Button onClick={() => void handleGenerateAvatarPreview(false)} disabled={isGeneratingAvatarPreview || avatarPreviewStatus === "generating"}>
-              {isGeneratingAvatarPreview ? "Generating..." : avatarPreviewUrl ? "View avatar look" : "Generate avatar look"}
-            </Button>
-            <Link href="/avatar">
-              <Button variant="secondary" className="w-full">Edit Digital Human</Button>
-            </Link>
-            {avatarPreviewUrl ? (
-              <Button variant="secondary" onClick={() => void handleGenerateAvatarPreview(true)} disabled={isGeneratingAvatarPreview}>
-                Regenerate avatar look
-              </Button>
-            ) : null}
-          </div>
-        </Card>
+        <div className="mt-4">
+          <DigitalHumanTryOnPanel
+            outfit={outfit}
+            avatarProfile={avatarProfile}
+            previewUrl={avatarPreviewUrl}
+            previewStatus={avatarPreviewStatus}
+            previewError={avatarPreviewError}
+            previewJobId={avatarPreviewJobId}
+            isGenerating={isGeneratingAvatarPreview}
+            accuracyLevel={avatarAccuracyLevel}
+            fitStatus={avatarFitStatus}
+            fitConfidence={avatarFitConfidence}
+            fitWarnings={avatarFitWarnings}
+            onOpenPreview={() => setAvatarPreviewOpen(true)}
+            onGenerateFitLocked={() => void handleGenerateAvatarPreview(false)}
+            onRegenerate={() => void handleGenerateAvatarPreview(true)}
+          />
+        </div>
 
         {avatarPreviewOpen ? (
           <OutfitPreview

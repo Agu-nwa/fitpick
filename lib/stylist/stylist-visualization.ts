@@ -12,6 +12,7 @@ import {
   serializeAvatarPreview
 } from "@/lib/avatar/avatar-preview";
 import type { PosePreset, VisualizationStyle } from "@/lib/avatar/avatar-profile";
+import { evaluateOutfitFitOnAvatar, type FitEvaluation } from "@/lib/fit/fit-lock";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
 import {
   buildPreviewCacheKeyFromItems,
@@ -45,6 +46,10 @@ type AvatarPreviewSummary = {
   imageUrl: string | null;
   cacheKey: string | null;
   errorMessage: string | null;
+  accuracyLevel?: FitEvaluation["accuracyLevel"];
+  fitStatus?: string;
+  fitConfidence?: number;
+  fitWarnings?: string[];
 };
 
 export type StylistVisualizationResult = {
@@ -52,6 +57,13 @@ export type StylistVisualizationResult = {
   outfitRecommendationId: string | null;
   avatarPreview: AvatarPreviewSummary;
   visualizationDisclaimer: string;
+  fitLock?: {
+    fitStatus: string;
+    fitConfidence: number;
+    warnings: string[];
+    lockedFitInstructions: string[];
+    accuracyLevel: FitEvaluation["accuracyLevel"];
+  };
   job?: ReturnType<typeof serializeJob>;
 };
 
@@ -75,6 +87,27 @@ function defaultAvatarPreview(patch: Partial<AvatarPreviewSummary> = {}): Avatar
     cacheKey: null,
     errorMessage: null,
     ...patch
+  };
+}
+
+function fitLockSummary(fitEvaluation?: FitEvaluation) {
+  if (!fitEvaluation) return undefined;
+  return {
+    fitStatus: fitEvaluation.fitStatus,
+    fitConfidence: fitEvaluation.fitConfidence,
+    warnings: fitEvaluation.warnings,
+    lockedFitInstructions: fitEvaluation.lockedFitInstructions,
+    accuracyLevel: fitEvaluation.accuracyLevel
+  };
+}
+
+function previewFitPatch(fitEvaluation?: FitEvaluation): Partial<AvatarPreviewSummary> {
+  if (!fitEvaluation) return {};
+  return {
+    accuracyLevel: fitEvaluation.accuracyLevel,
+    fitStatus: fitEvaluation.fitStatus,
+    fitConfidence: fitEvaluation.fitConfidence,
+    fitWarnings: fitEvaluation.warnings
   };
 }
 
@@ -424,6 +457,7 @@ export async function triggerDigitalHumanPreviewForStylist(
     });
   }
 
+  const fitEvaluation = evaluateOutfitFitOnAvatar(loaded.avatarProfile, loaded.items);
   const previewOptions = {
     visualizationStyle: options.visualizationStyle || loaded.avatarProfile.visualizationStyle || "luxury",
     posePreset: options.posePreset || loaded.avatarProfile.posePreset || "standing"
@@ -439,8 +473,10 @@ export async function triggerDigitalHumanPreviewForStylist(
         status: "ready",
         previewId: String(cached._id),
         imageUrl: cached.imageUrl,
-        cacheKey
-      })
+        cacheKey,
+        ...previewFitPatch(fitEvaluation)
+      }),
+      fitLock: fitLockSummary(fitEvaluation)
     });
   }
 
@@ -460,8 +496,10 @@ export async function triggerDigitalHumanPreviewForStylist(
         status: "generating",
         previewId: String(inFlight._id),
         imageUrl: inFlight.imageUrl || null,
-        cacheKey
-      })
+        cacheKey,
+        ...previewFitPatch(fitEvaluation)
+      }),
+      fitLock: fitLockSummary(fitEvaluation)
     });
   }
 
@@ -482,6 +520,11 @@ export async function triggerDigitalHumanPreviewForStylist(
       model: getAiModel("imageGeneration"),
       visualizationStyle: previewOptions.visualizationStyle,
       posePreset: previewOptions.posePreset,
+      accuracyLevel: fitEvaluation.accuracyLevel.id,
+      fitStatus: fitEvaluation.fitStatus,
+      fitConfidence: fitEvaluation.fitConfidence,
+      fitWarnings: fitEvaluation.warnings,
+      fitLockInstructions: fitEvaluation.lockedFitInstructions,
       errorMessage: "",
       lastAttemptAt: new Date()
     },
@@ -513,8 +556,10 @@ export async function triggerDigitalHumanPreviewForStylist(
         status: "queued",
         jobId: String(job._id),
         previewId: previewRecord?._id ? String(previewRecord._id) : null,
-        cacheKey
+        cacheKey,
+        ...previewFitPatch(fitEvaluation)
       }),
+      fitLock: fitLockSummary(fitEvaluation),
       job
     });
   }
@@ -531,8 +576,10 @@ export async function triggerDigitalHumanPreviewForStylist(
         status: "ready",
         previewId: preview.id || null,
         imageUrl: preview.imageUrl || preview.previewUrl || null,
-        cacheKey
-      })
+        cacheKey,
+        ...previewFitPatch(fitEvaluation)
+      }),
+      fitLock: fitLockSummary(fitEvaluation)
     });
   } catch {
     await markAvatarPreviewStatus(
@@ -554,8 +601,10 @@ export async function triggerDigitalHumanPreviewForStylist(
         status: "failed",
         previewId: previewRecord?._id ? String(previewRecord._id) : null,
         cacheKey,
-        errorMessage: "Unable to generate Digital Human Preview right now."
-      })
+        errorMessage: "Unable to generate Digital Human Preview right now.",
+        ...previewFitPatch(fitEvaluation)
+      }),
+      fitLock: fitLockSummary(fitEvaluation)
     });
   }
 }
@@ -566,6 +615,7 @@ export function serializeStylistVisualization(result?: StylistVisualizationSeria
     outfitRecommendationId: result?.outfitRecommendationId || null,
     avatarPreview: defaultAvatarPreview(result?.avatarPreview || {}),
     visualizationDisclaimer: result?.visualizationDisclaimer || stylistVisualizationDisclaimer,
+    ...(result?.fitLock ? { fitLock: result.fitLock } : {}),
     ...(result?.job ? { job: serializeJob(result.job) } : {})
   };
 }

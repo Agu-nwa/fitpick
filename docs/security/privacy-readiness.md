@@ -29,7 +29,7 @@ Do not store those as identity claims.
 ## Digital Human Preview
 
 - Digital Human Preview is an AI fashion visualization, not exact body-measurement virtual try-on.
-- Store body presets only, not exact measurements.
+- Store optional body measurements only when the user enters or confirms them, and keep them editable and transparent.
 - Treat skin tone and hair style presets as user-editable visualization settings, not inferred sensitive attributes.
 - Do not infer health, ethnicity, sexuality, religion, political views, or precise location from avatar settings.
 - Only accept HTTPS GLB avatar URLs.

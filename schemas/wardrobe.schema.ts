@@ -18,6 +18,12 @@ export const wardrobeCategorySchema = z.enum([
 ]);
 
 export const wardrobeConditionSchema = z.enum(["ready", "needs-care", "missing-tags"]);
+export const taggedSizeSchema = z.enum(["XS", "S", "M", "L", "XL", "XXL", "custom", "unknown"]);
+export const sizeSystemSchema = z.enum(["US", "UK", "EU", "NG", "international", "custom", "unknown"]);
+export const garmentFitSchema = z.enum(["slim", "regular", "relaxed", "oversized", "tailored", "flowing", "unknown"]);
+export const stretchLevelSchema = z.enum(["none", "low", "medium", "high", "unknown"]);
+export const fabricDrapeSchema = z.enum(["structured", "soft", "flowing", "heavy", "stiff", "unknown"]);
+export const measurementSourceSchema = z.enum(["label_ocr", "user_confirmed", "ai_estimated", "manual", "unknown"]);
 
 const tagList = z.array(z.string().trim().min(1).max(40)).max(20);
 const confirmedScalar = z.union([z.string().trim().max(500), z.number().min(0).max(10), z.null()]);
@@ -39,6 +45,28 @@ const wardrobeFields = {
   pattern: z.string().trim().max(60).optional().or(z.literal("")),
   fabric: z.string().trim().max(60).optional().or(z.literal("")),
   fit: z.string().trim().max(60).optional().or(z.literal("")),
+  taggedSize: taggedSizeSchema.default("unknown"),
+  sizeSystem: sizeSystemSchema.default("unknown"),
+  garmentFit: garmentFitSchema.default("unknown"),
+  garmentMeasurements: z
+    .object({
+      chestWidthCm: z.number().min(10).max(120).nullable().optional(),
+      shoulderWidthCm: z.number().min(10).max(90).nullable().optional(),
+      sleeveLengthCm: z.number().min(5).max(120).nullable().optional(),
+      bodyLengthCm: z.number().min(10).max(180).nullable().optional(),
+      waistCm: z.number().min(20).max(180).nullable().optional(),
+      hipsCm: z.number().min(20).max(200).nullable().optional(),
+      inseamCm: z.number().min(10).max(130).nullable().optional(),
+      outseamCm: z.number().min(20).max(160).nullable().optional(),
+      shoeLengthCm: z.number().min(10).max(40).nullable().optional(),
+      heelHeightCm: z.number().min(0).max(25).nullable().optional()
+    })
+    .strict()
+    .default({}),
+  stretchLevel: stretchLevelSchema.default("unknown"),
+  fabricDrape: fabricDrapeSchema.default("unknown"),
+  fitConfidence: z.number().min(0).max(1).default(0),
+  measurementSource: measurementSourceSchema.default("unknown"),
   formality: tagList.default([]),
   occasions: tagList.default([]),
   weather: tagList.default([]),
@@ -52,6 +80,14 @@ export const updateWardrobeItemSchema = z
     ...wardrobeFields,
     name: wardrobeFields.name.optional(),
     category: wardrobeFields.category.optional(),
+    taggedSize: taggedSizeSchema.optional(),
+    sizeSystem: sizeSystemSchema.optional(),
+    garmentFit: garmentFitSchema.optional(),
+    garmentMeasurements: wardrobeFields.garmentMeasurements.optional(),
+    stretchLevel: stretchLevelSchema.optional(),
+    fabricDrape: fabricDrapeSchema.optional(),
+    fitConfidence: z.number().min(0).max(1).optional(),
+    measurementSource: measurementSourceSchema.optional(),
     formality: tagList.optional(),
     occasions: tagList.optional(),
     weather: tagList.optional()
@@ -66,6 +102,14 @@ export const wardrobeTagReviewSchema = z
     pattern: z.string().trim().max(60).optional().or(z.literal("")),
     fabric: z.string().trim().max(60).optional().or(z.literal("")),
     fit: z.string().trim().max(60).optional().or(z.literal("")),
+    taggedSize: taggedSizeSchema.optional(),
+    sizeSystem: sizeSystemSchema.optional(),
+    garmentFit: garmentFitSchema.optional(),
+    garmentMeasurements: wardrobeFields.garmentMeasurements.optional(),
+    stretchLevel: stretchLevelSchema.optional(),
+    fabricDrape: fabricDrapeSchema.optional(),
+    fitConfidence: z.number().min(0).max(1).optional(),
+    measurementSource: measurementSourceSchema.optional(),
     formality: tagList.optional(),
     occasions: tagList.optional(),
     weather: tagList.optional(),

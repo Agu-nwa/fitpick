@@ -25,6 +25,7 @@ type ChatMessage = {
   avatarPreview?: StylistAvatarPreview;
   visualMode?: StylistVisualMode;
   visualizationDisclaimer?: string;
+  fitLock?: StylistResponse["fitLock"];
   jobId?: string | null;
 };
 
@@ -65,7 +66,11 @@ function compactPreview(preview?: Partial<StylistAvatarPreview>): StylistAvatarP
     previewId: preview?.previewId ?? null,
     imageUrl: preview?.imageUrl ?? null,
     cacheKey: preview?.cacheKey ?? null,
-    errorMessage: preview?.errorMessage ?? null
+    errorMessage: preview?.errorMessage ?? null,
+    accuracyLevel: preview?.accuracyLevel,
+    fitStatus: preview?.fitStatus,
+    fitConfidence: preview?.fitConfidence,
+    fitWarnings: preview?.fitWarnings
   };
 }
 
@@ -127,7 +132,11 @@ export function StylistChat() {
             previewId: preview.id || null,
             imageUrl: preview.imageUrl || preview.previewUrl || null,
             cacheKey: preview.cacheKey || null,
-            errorMessage: null
+            errorMessage: null,
+            accuracyLevel: preview.accuracyLevel,
+            fitStatus: preview.fitStatus,
+            fitConfidence: preview.fitConfidence,
+            fitWarnings: preview.fitWarnings
           }),
           jobId: null
         });
@@ -208,6 +217,7 @@ export function StylistChat() {
       avatarPreview,
       visualMode: response.data.visualization?.visualMode || response.data.stylist.visualMode || "none",
       visualizationDisclaimer: response.data.visualization?.visualizationDisclaimer || response.data.stylist.visualizationDisclaimer,
+      fitLock: response.data.visualization?.fitLock || response.data.stylist.fitLock,
       jobId
     });
 
@@ -255,7 +265,11 @@ export function StylistChat() {
         previewId: preview.id || null,
         imageUrl: preview.imageUrl || preview.previewUrl || null,
         cacheKey: preview.cacheKey || null,
-        errorMessage: preview.errorMessage || null
+        errorMessage: preview.errorMessage || null,
+        accuracyLevel: preview.accuracyLevel,
+        fitStatus: preview.fitStatus,
+        fitConfidence: preview.fitConfidence,
+        fitWarnings: preview.fitWarnings
       }),
       jobId
     });
@@ -280,6 +294,8 @@ export function StylistChat() {
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={previewTone(status)}>{previewLabel(status)}</Badge>
               {entry.outfitRecommendationId ? <Badge tone="neutral">Look {entry.outfitRecommendationId.slice(-6)}</Badge> : null}
+              {preview?.accuracyLevel ? <Badge tone={preview.accuracyLevel.id === "fit_locked" ? "success" : "premium"}>{preview.accuracyLevel.label}</Badge> : null}
+              {entry.fitLock?.fitStatus ? <Badge tone={entry.fitLock.fitStatus === "likely_fits" ? "success" : "warning"}>{entry.fitLock.fitStatus.replace(/_/g, " ")}</Badge> : null}
             </div>
 
             {preview?.imageUrl ? (
@@ -299,6 +315,13 @@ export function StylistChat() {
             )}
 
             <p className="mt-3 text-xs leading-5 text-muted">{entry.visualizationDisclaimer || "AI visualization, not exact virtual try-on."}</p>
+            {(entry.fitLock?.warnings?.length || preview?.fitWarnings?.length) ? (
+              <div className="mt-3 space-y-1 rounded-xl border border-warning/20 bg-warning/10 p-3">
+                {(entry.fitLock?.warnings || preview?.fitWarnings || []).slice(0, 3).map((warning) => (
+                  <p key={warning} className="text-xs leading-5 text-ink">{warning}</p>
+                ))}
+              </div>
+            ) : null}
             {entry.jobId ? <p className="mt-1 text-[11px] text-muted">Job queued: {entry.jobId.slice(-8)}</p> : null}
 
             <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -314,7 +337,7 @@ export function StylistChat() {
               ) : null}
               <Link href="/avatar" className="block">
                 <Button type="button" variant="secondary" className="w-full">
-                  Edit Digital Human
+                  Improve fit accuracy
                 </Button>
               </Link>
               {outfit ? (

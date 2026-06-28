@@ -14,6 +14,12 @@ export const stylistIntentSchema = z.enum([
 
 export const stylistVisualModeSchema = z.enum(["none", "premium_preview", "digital_human"]);
 export const stylistAvatarPreviewStatusSchema = z.enum(["not_started", "queued", "generating", "ready", "failed"]);
+export const previewAccuracyLevelSchema = z.object({
+  id: z.enum(["inspired_visualization", "garment_referenced", "fit_locked", "true_3d_simulation"]),
+  label: z.string().trim().max(80),
+  meaning: z.string().trim().max(220),
+  rank: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+});
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 
@@ -24,7 +30,11 @@ export const stylistAvatarPreviewSchema = z
     previewId: objectId.nullable().default(null),
     imageUrl: z.string().trim().max(2048).nullable().default(null),
     cacheKey: z.string().trim().max(260).nullable().default(null),
-    errorMessage: z.string().trim().max(220).nullable().default(null)
+    errorMessage: z.string().trim().max(220).nullable().default(null),
+    accuracyLevel: previewAccuracyLevelSchema.optional(),
+    fitStatus: z.string().trim().max(60).optional(),
+    fitConfidence: z.number().min(0).max(1).optional(),
+    fitWarnings: z.array(z.string().trim().min(1).max(180)).max(10).optional()
   })
   .strict();
 
@@ -56,7 +66,16 @@ export const stylistResponseSchema = z
       .string()
       .trim()
       .max(180)
-      .default("AI visualization, not exact virtual try-on.")
+      .default("AI visualization, not exact virtual try-on."),
+    fitLock: z
+      .object({
+        fitStatus: z.string().trim().max(60),
+        fitConfidence: z.number().min(0).max(1),
+        warnings: z.array(z.string().trim().min(1).max(180)).max(10),
+        lockedFitInstructions: z.array(z.string().trim().min(1).max(220)).max(12),
+        accuracyLevel: previewAccuracyLevelSchema
+      })
+      .optional()
   })
   .strict();
 

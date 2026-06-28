@@ -33,6 +33,14 @@ function tagPayload(values: WardrobeTagFormValues) {
     formality: values.formality,
     occasions: values.occasions,
     weather: values.weather,
+    taggedSize: values.taggedSize,
+    sizeSystem: values.sizeSystem,
+    garmentFit: values.garmentFit,
+    garmentMeasurements: values.garmentMeasurements,
+    stretchLevel: values.stretchLevel,
+    fabricDrape: values.fabricDrape,
+    fitConfidence: values.fitConfidence,
+    measurementSource: values.measurementSource,
     condition: values.condition
   };
 }
@@ -60,6 +68,9 @@ function ItemDetails({ item }: { item: WardrobeItem }) {
             {item.pattern ? <Chip>{item.pattern}</Chip> : null}
             {item.fabric ? <Chip>{item.fabric}</Chip> : null}
             {item.fit ? <Chip>{item.fit}</Chip> : null}
+            {item.taggedSize && item.taggedSize !== "unknown" ? <Chip>Size {item.taggedSize}</Chip> : null}
+            {item.garmentFit && item.garmentFit !== "unknown" ? <Chip>{item.garmentFit} fit</Chip> : null}
+            {item.fabricDrape && item.fabricDrape !== "unknown" ? <Chip>{item.fabricDrape} drape</Chip> : null}
             <Chip>{status}</Chip>
             {item.lastWorn ? <Chip>Last worn: {item.lastWorn}</Chip> : null}
           </div>

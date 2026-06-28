@@ -44,6 +44,12 @@ const OutfitPreviewSchema = new Schema(
     model: { type: String, default: "" },
     generatedAt: { type: Date, default: null },
     errorMessage: { type: String, default: "" },
+    accuracyLevel: {
+      type: String,
+      enum: ["inspired_visualization", "garment_referenced", "fit_locked", "true_3d_simulation"],
+      default: "inspired_visualization"
+    },
+    fitWarnings: { type: [String], default: [] },
     attempts: { type: Number, default: 0 },
     lastAttemptAt: { type: Date, default: null },
     format: { type: String, default: "png" },

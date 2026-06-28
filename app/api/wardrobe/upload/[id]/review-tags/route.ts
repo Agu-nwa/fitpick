@@ -65,6 +65,18 @@ function verifiedMetadata(verifiedFields: Record<string, any> = {}) {
   );
 }
 
+function fitVerifiedFields(data: any) {
+  return {
+    taggedSize: { value: data.taggedSize || "unknown", confidence: 1, originalConfidence: 0, source: "user_confirmed" },
+    sizeSystem: { value: data.sizeSystem || "unknown", confidence: 1, originalConfidence: 0, source: "user_confirmed" },
+    garmentFit: { value: data.garmentFit || "unknown", confidence: 1, originalConfidence: 0, source: "user_confirmed" },
+    stretchLevel: { value: data.stretchLevel || "unknown", confidence: 1, originalConfidence: 0, source: "user_confirmed" },
+    fabricDrape: { value: data.fabricDrape || "unknown", confidence: 1, originalConfidence: 0, source: "user_confirmed" },
+    fitConfidence: { value: data.fitConfidence ?? 0, confidence: 1, originalConfidence: 0, source: "user_confirmed" },
+    measurementSource: { value: data.measurementSource || "unknown", confidence: 1, originalConfidence: 0, source: "user_confirmed" }
+  };
+}
+
 export async function POST(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
   const limited = rateLimitPlaceholder({ key: `wardrobe-upload-review:${meta.ip}`, limit: 30, windowMs: 60 * 1000 });
@@ -84,7 +96,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return apiError("CONFLICT", "This upload has already been added to your wardrobe.");
     }
 
-    const verifiedFields = parsed.data.verifiedFields || {};
+    const verifiedFields = {
+      ...(parsed.data.verifiedFields || {}),
+      ...fitVerifiedFields(parsed.data)
+    };
     const condition = inferCondition(parsed.data);
     const item = await WardrobeItem.create({
       name: parsed.data.name,
@@ -94,6 +109,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       pattern: parsed.data.pattern || "",
       fabric: parsed.data.fabric || "",
       fit: parsed.data.fit || "",
+      taggedSize: parsed.data.taggedSize || "unknown",
+      sizeSystem: parsed.data.sizeSystem || "unknown",
+      garmentFit: parsed.data.garmentFit || "unknown",
+      garmentMeasurements: parsed.data.garmentMeasurements || {},
+      stretchLevel: parsed.data.stretchLevel || "unknown",
+      fabricDrape: parsed.data.fabricDrape || "unknown",
+      fitConfidence: parsed.data.fitConfidence ?? 0,
+      measurementSource: parsed.data.measurementSource || "unknown",
       formality: normalizeList(parsed.data.formality),
       occasions: normalizeList(parsed.data.occasions),
       weather: normalizeList(parsed.data.weather),
@@ -110,11 +133,25 @@ export async function POST(request: NextRequest, context: RouteContext) {
     upload.createdItemId = item._id;
     upload.reviewedAt = new Date();
     upload.aiTagStatus = "completed";
+    upload.taggedSize = parsed.data.taggedSize || "unknown";
+    upload.sizeSystem = parsed.data.sizeSystem || "unknown";
+    upload.garmentFit = parsed.data.garmentFit || "unknown";
+    upload.garmentMeasurements = parsed.data.garmentMeasurements || {};
+    upload.stretchLevel = parsed.data.stretchLevel || "unknown";
+    upload.fabricDrape = parsed.data.fabricDrape || "unknown";
+    upload.fitConfidence = parsed.data.fitConfidence ?? 0;
+    upload.measurementSource = parsed.data.measurementSource || "unknown";
     await upload.save();
 
     if (backgroundJobsEnabled()) {
       await Promise.all(
-        (["front", "back"] as const)
+        [
+          enqueueJob(
+            "garment_asset_generation",
+            { wardrobeItemId: String(item._id) },
+            { userId: auth.user._id, maxAttempts: 2 }
+          ),
+          ...(["front", "back"] as const)
           .filter((slot) => (item.images as any)?.[slot]?.storageKey)
           .map((slot) =>
             enqueueJob(
@@ -128,6 +165,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
               { userId: auth.user._id, maxAttempts: 2 }
             )
           )
+        ]
       );
     }
 

@@ -12,6 +12,7 @@ import { safeShortText } from "@/lib/validation/common";
 import { readJson, validateBody } from "@/lib/validation";
 
 const nullablePreset = (max = 60) => z.union([safeShortText(max), z.null()]).optional();
+const nullableMeasurement = (min: number, max: number) => z.union([z.number().min(min).max(max), z.null()]).optional();
 
 const avatarProfilePatchSchema = z
   .object({
@@ -20,10 +21,25 @@ const avatarProfilePatchSchema = z
     heightPreset: z.enum(["short", "average", "tall"]).nullable().optional(),
     skinTonePreset: nullablePreset(),
     hairStylePreset: nullablePreset(),
-    posePreset: z.enum(["standing", "walking", "editorial", "runway", "casual"]).optional(),
+    posePreset: z.enum(["standing", "walking", "editorial", "runway", "casual", "side", "back"]).optional(),
     visualizationStyle: z.enum(["minimal", "luxury", "streetwear", "editorial"]).optional(),
     avatarProvider: z.enum(["ready_player_me", "fitpick_preset", "custom_glb"]).optional(),
     avatarUrl: z.union([z.string().trim().max(2048), z.null()]).optional(),
+    heightCm: nullableMeasurement(90, 240),
+    weightKg: nullableMeasurement(25, 260),
+    chestCm: nullableMeasurement(45, 180),
+    bustCm: nullableMeasurement(45, 180),
+    waistCm: nullableMeasurement(40, 180),
+    hipsCm: nullableMeasurement(45, 200),
+    shoulderWidthCm: nullableMeasurement(25, 80),
+    inseamCm: nullableMeasurement(35, 130),
+    armLengthCm: nullableMeasurement(30, 110),
+    neckCm: nullableMeasurement(20, 70),
+    thighCm: nullableMeasurement(25, 110),
+    shoeSize: z.union([z.string().trim().max(40), z.null()]).optional(),
+    bodyMeasurementSource: z.enum(["manual", "estimated", "body_scan", "unknown"]).optional(),
+    bodyMeasurementConfidence: z.number().min(0).max(1).optional(),
+    bodyFitPreference: z.enum(["true_to_size", "slim", "regular", "relaxed", "oversized"]).optional(),
     consentAccepted: z.boolean().optional()
   })
   .strict();

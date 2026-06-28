@@ -8,7 +8,7 @@ export default function AvatarPage() {
       <PageHeader
         eyebrow="Luxury tier"
         title="Create your Digital Human"
-        subtitle="Choose how FitPick visualizes your outfits. This is an AI fashion visualization, not exact body-measurement virtual try-on."
+        subtitle="Add measurements, fit preference, and 360° controls so FitPick can reduce random fit changes. This remains an AI visualization until true 3D simulation is connected."
       />
       <div className="mt-7">
         <AvatarStudioClient />

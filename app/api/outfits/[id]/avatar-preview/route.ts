@@ -18,6 +18,7 @@ import {
 import { serializeAvatarProfile } from "@/lib/avatar/avatar-profile";
 import { requireUser } from "@/lib/auth";
 import { requestMeta } from "@/lib/audit";
+import { evaluateOutfitFitOnAvatar } from "@/lib/fit/fit-lock";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       visualizationStyle: parsed.data.visualizationStyle || loaded.avatarProfile.visualizationStyle || "luxury",
       posePreset: parsed.data.posePreset || loaded.avatarProfile.posePreset || "standing"
     };
+    const fitEvaluation = evaluateOutfitFitOnAvatar(loaded.avatarProfile, loaded.items);
     const cacheKey = buildAvatarCacheKeyFromItems(activeUserId, context.params.id, loaded.items, loaded.avatarProfile, options);
     activeCacheKey = cacheKey;
 
@@ -166,6 +168,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
         model: getAiModel("imageGeneration"),
         visualizationStyle: options.visualizationStyle,
         posePreset: options.posePreset,
+        accuracyLevel: fitEvaluation.accuracyLevel.id,
+        fitStatus: fitEvaluation.fitStatus,
+        fitConfidence: fitEvaluation.fitConfidence,
+        fitWarnings: fitEvaluation.warnings,
+        fitLockInstructions: fitEvaluation.lockedFitInstructions,
         errorMessage: "",
         lastAttemptAt: new Date()
       },
@@ -197,7 +204,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
             promptVersion: avatarPreviewPromptVersion,
             model: getAiModel("imageGeneration"),
             visualizationStyle: options.visualizationStyle,
-            posePreset: options.posePreset
+            posePreset: options.posePreset,
+            accuracyLevel: fitEvaluation.accuracyLevel.id,
+            fitStatus: fitEvaluation.fitStatus,
+            fitConfidence: fitEvaluation.fitConfidence,
+            fitWarnings: fitEvaluation.warnings,
+            fitLockInstructions: fitEvaluation.lockedFitInstructions
           }),
           avatarProfile: serializeAvatarProfile(loaded.avatarProfile),
           job: serializeJob(job)

@@ -37,6 +37,22 @@ const WardrobeImageSchema = new Schema(
   { _id: false }
 );
 
+const GarmentMeasurementsSchema = new Schema(
+  {
+    chestWidthCm: { type: Number, default: null, min: 10, max: 120 },
+    shoulderWidthCm: { type: Number, default: null, min: 10, max: 90 },
+    sleeveLengthCm: { type: Number, default: null, min: 5, max: 120 },
+    bodyLengthCm: { type: Number, default: null, min: 10, max: 180 },
+    waistCm: { type: Number, default: null, min: 20, max: 180 },
+    hipsCm: { type: Number, default: null, min: 20, max: 200 },
+    inseamCm: { type: Number, default: null, min: 10, max: 130 },
+    outseamCm: { type: Number, default: null, min: 20, max: 160 },
+    shoeLengthCm: { type: Number, default: null, min: 10, max: 40 },
+    heelHeightCm: { type: Number, default: null, min: 0, max: 25 }
+  },
+  { _id: false }
+);
+
 const WardrobeItemSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -61,6 +77,14 @@ const WardrobeItemSchema = new Schema(
     pattern: { type: String, default: "" },
     fabric: { type: String, default: "" },
     fit: { type: String, default: "" },
+    taggedSize: { type: String, enum: ["XS", "S", "M", "L", "XL", "XXL", "custom", "unknown"], default: "unknown" },
+    sizeSystem: { type: String, enum: ["US", "UK", "EU", "NG", "international", "custom", "unknown"], default: "unknown" },
+    garmentFit: { type: String, enum: ["slim", "regular", "relaxed", "oversized", "tailored", "flowing", "unknown"], default: "unknown" },
+    garmentMeasurements: { type: GarmentMeasurementsSchema, default: () => ({}) },
+    stretchLevel: { type: String, enum: ["none", "low", "medium", "high", "unknown"], default: "unknown" },
+    fabricDrape: { type: String, enum: ["structured", "soft", "flowing", "heavy", "stiff", "unknown"], default: "unknown" },
+    fitConfidence: { type: Number, default: 0, min: 0, max: 1 },
+    measurementSource: { type: String, enum: ["label_ocr", "user_confirmed", "ai_estimated", "manual", "unknown"], default: "unknown" },
     formality: { type: [String], default: [] },
     occasions: { type: [String], default: [] },
     weather: { type: [String], default: [] },

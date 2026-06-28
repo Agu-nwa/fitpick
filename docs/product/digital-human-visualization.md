@@ -19,15 +19,16 @@ This feature is not exact body-measurement virtual try-on. It does not claim exa
 FitPick stores:
 
 - Avatar profile presets such as gender presentation, body preset, height preset, pose, visualization style, and provider.
+- Optional user-entered body measurements, measurement source, measurement confidence, and fit preference.
 - Optional HTTPS GLB avatar URL.
 - User consent that the preview is AI fashion visualization, not exact virtual try-on.
 - Avatar preview metadata such as user ID, outfit ID, avatar profile ID, item IDs, cache key, model, prompt version, status, S3 storage key, and CloudFront/S3 image URL.
 
-FitPick does not store exact body measurements in this phase. Generated avatar preview images are stored in S3 and served through CloudFront-ready URLs. MongoDB stores metadata only, not long-term Base64 image payloads.
+Generated avatar preview images are stored in S3 and served through CloudFront-ready URLs. MongoDB stores metadata only, not long-term Base64 image payloads.
 
 ## Privacy Boundaries
 
-Avatar profile data must stay transparent and user-editable. Body preset is a styling visualization preference, not medical or body-measurement data. FitPick must not infer or store health, ethnicity, sexuality, religion, political views, or precise location from avatar settings, wardrobe data, or generated previews.
+Avatar profile data must stay transparent and user-editable. Body measurements are optional fit-visualization data and must not be used to infer health, ethnicity, sexuality, religion, political views, or precise location from avatar settings, wardrobe data, or generated previews.
 
 Cultural styling is allowed only as fashion context, such as native wear, ankara, agbada, kaftan, aso-ebi, isiagu, lace, or senator wear.
 

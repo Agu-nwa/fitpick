@@ -32,6 +32,8 @@ export type OutfitRecommendation = {
     cacheKey?: string;
     promptVersion?: string;
     model?: string;
+    accuracyLevel?: PreviewAccuracySummary;
+    fitWarnings?: string[];
     generatedAt?: string | null;
     errorMessage?: string;
     attempts?: number;
@@ -61,6 +63,22 @@ export type StylistIntent =
   | "unclear";
 
 export type StylistVisualMode = "none" | "premium_preview" | "digital_human";
+export type PreviewAccuracyLevelId = "inspired_visualization" | "garment_referenced" | "fit_locked" | "true_3d_simulation";
+
+export type PreviewAccuracySummary = {
+  id: PreviewAccuracyLevelId;
+  label: string;
+  meaning: string;
+  rank: 1 | 2 | 3 | 4;
+};
+
+export type FitLockSummary = {
+  fitStatus: "unknown" | "likely_fits" | "may_be_tight" | "may_be_loose" | "oversized_intended" | "measurements_needed" | string;
+  fitConfidence: number;
+  warnings: string[];
+  lockedFitInstructions?: string[];
+  accuracyLevel?: PreviewAccuracySummary;
+};
 
 export type StylistAvatarPreview = {
   status: "not_started" | "queued" | "generating" | "ready" | "failed" | string;
@@ -69,6 +87,10 @@ export type StylistAvatarPreview = {
   imageUrl: string | null;
   cacheKey: string | null;
   errorMessage: string | null;
+  accuracyLevel?: PreviewAccuracySummary;
+  fitStatus?: string;
+  fitConfidence?: number;
+  fitWarnings?: string[];
 };
 
 export type StylistResponse = {
@@ -88,4 +110,5 @@ export type StylistResponse = {
   outfitRecommendationId?: string | null;
   avatarPreview?: StylistAvatarPreview;
   visualizationDisclaimer?: string;
+  fitLock?: FitLockSummary;
 };
